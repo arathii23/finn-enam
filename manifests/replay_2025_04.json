@@ -1,0 +1,71 @@
+{
+  "_comment": "Replay manifest: verified SOURCE METADATA only (URLs, document types, reporting periods and where to look for publication evidence). It contains no research answers, financial values or verdicts. Publication times are NOT asserted here; ingestion must prove them from dated exchange records. Candidate URLs come from FINN_Source_Access_Audit.json / FINN_Prebuild_Specification.md section 10.",
+  "replay_id": "nse-replay-2025-04-17-to-30",
+  "label": "Historical replay",
+  "filing_window": {"from": "2025-04-17", "to": "2025-04-30"},
+  "evidence_cutoff": "2025-04-30T23:59:59+05:30",
+  "evidence_cutoff_display": "30 Apr 2025, 23:59 IST",
+  "eod_window": {"from": "2025-04-17", "to": "2025-04-30"},
+  "attachment_categories": [
+    "Outcome of Board Meeting",
+    "Financial Result Updates",
+    "Integrated Filing- Financial",
+    "Press Release",
+    "Acquisition"
+  ],
+  "max_attachments_per_company": 2,
+  "companies": {
+    "INFY": {
+      "verification": {
+        "_comment": "Identity assertions from the supplied audit (NSE EQUITY_L.csv); used only by checks, never shown as research.",
+        "legal_name": "Infosys Limited",
+        "isin": "INE009A01021",
+        "series": "EQ"
+      },
+      "documents": [
+        {
+          "doc_type": "annual_report",
+          "period_label": "FY2023-24",
+          "period_start": "2023-04-01",
+          "period_end": "2024-03-31",
+          "url": "https://nsearchives.nseindia.com/corporate/INFY_03062024153620_infosysar24.pdf",
+          "availability_search": {
+            "announcements": {"from": "2024-05-25", "to": "2024-06-30"},
+            "annual_reports_api": true
+          }
+        },
+        {
+          "doc_type": "earnings_call_transcript",
+          "period_label": "Q4 FY2024-25",
+          "period_start": "2025-01-01",
+          "period_end": "2025-03-31",
+          "event_date": "2025-04-17",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_22042025213147_SEfiling_Earningscalltranscript.pdf",
+          "availability_search": {"announcements": {"from": "2025-04-17", "to": "2025-04-30"}}
+        },
+        {
+          "doc_type": "earnings_call_transcript",
+          "period_label": "Q3 FY2024-25",
+          "period_start": "2024-10-01",
+          "period_end": "2024-12-31",
+          "event_date": "2025-01-16",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_21012025151633_SEfiling_Earningscalltranscript.pdf",
+          "availability_search": {"announcements": {"from": "2025-01-16", "to": "2025-01-24"}}
+        }
+      ]
+    }
+  },
+  "negative_fixtures": {
+    "_comment": "Documents that must NOT be eligible in this replay. Used by the cutoff check if they are present in the store.",
+    "INFY": [
+      {
+        "doc_type": "annual_report",
+        "period_label": "FY2024-25",
+        "period_start": "2024-04-01",
+        "period_end": "2025-03-31",
+        "url": "https://nsearchives.nseindia.com/corporate/Infosys_02062025172921_infosys-ar-2025.pdf",
+        "availability_search": {"announcements": {"from": "2025-05-25", "to": "2025-06-30"}, "annual_reports_api": true}
+      }
+    ]
+  }
+}

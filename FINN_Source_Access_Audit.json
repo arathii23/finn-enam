@@ -1,0 +1,585 @@
+{
+  "review_date_user_timezone": "2026-10-30",
+  "purpose": "Read-only public-source feasibility checks; no application code",
+  "limits": [
+    "Point checks only; no hosted application or scheduler was tested",
+    "HTTP success does not establish feed completeness or full financial parsing",
+    "Some web-reader successes differed from direct HTTP outcomes",
+    "Company and exchange PDF copies may have different page counts and cover pages"
+  ],
+  "observations": [
+    {
+      "name": "eod_17042025",
+      "url": "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_17042025.csv",
+      "status": 200,
+      "content_type": "text/csv",
+      "bytes": 324785,
+      "final_url": "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_17042025.csv",
+      "seconds": 0.99,
+      "data_rows": 2853,
+      "samples": [
+        {
+          "SYMBOL": "HCLTECH",
+          "SERIES": "EQ",
+          "DATE1": "17-Apr-2025",
+          "PREV_CLOSE": "1431.70",
+          "OPEN_PRICE": "1420.00",
+          "HIGH_PRICE": "1442.10",
+          "LOW_PRICE": "1384.00",
+          "LAST_PRICE": "1439.00",
+          "CLOSE_PRICE": "1438.00",
+          "AVG_PRICE": "1409.58",
+          "TTL_TRD_QNTY": "3549969",
+          "TURNOVER_LACS": "50039.74",
+          "NO_OF_TRADES": "168356",
+          "DELIV_QTY": "1298225",
+          "DELIV_PER": "36.57"
+        },
+        {
+          "SYMBOL": "INFY",
+          "SERIES": "EQ",
+          "DATE1": "17-Apr-2025",
+          "PREV_CLOSE": "1413.10",
+          "OPEN_PRICE": "1398.00",
+          "HIGH_PRICE": "1429.80",
+          "LOW_PRICE": "1378.30",
+          "LAST_PRICE": "1427.70",
+          "CLOSE_PRICE": "1419.50",
+          "AVG_PRICE": "1400.17",
+          "TTL_TRD_QNTY": "14264227",
+          "TURNOVER_LACS": "199723.56",
+          "NO_OF_TRADES": "349779",
+          "DELIV_QTY": "8263644",
+          "DELIV_PER": "57.93"
+        }
+      ]
+    },
+    {
+      "name": "eod_22042025",
+      "url": "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_22042025.csv",
+      "status": 200,
+      "content_type": "text/csv",
+      "bytes": 326673,
+      "final_url": "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_22042025.csv",
+      "seconds": 0.96,
+      "data_rows": 2864,
+      "samples": [
+        {
+          "SYMBOL": "HCLTECH",
+          "SERIES": "EQ",
+          "DATE1": "22-Apr-2025",
+          "PREV_CLOSE": "1482.00",
+          "OPEN_PRICE": "1490.00",
+          "HIGH_PRICE": "1499.90",
+          "LOW_PRICE": "1464.50",
+          "LAST_PRICE": "1485.90",
+          "CLOSE_PRICE": "1479.90",
+          "AVG_PRICE": "1480.59",
+          "TTL_TRD_QNTY": "2608145",
+          "TURNOVER_LACS": "38615.96",
+          "NO_OF_TRADES": "95264",
+          "DELIV_QTY": "1101800",
+          "DELIV_PER": "42.24"
+        },
+        {
+          "SYMBOL": "INFY",
+          "SERIES": "EQ",
+          "DATE1": "22-Apr-2025",
+          "PREV_CLOSE": "1451.00",
+          "OPEN_PRICE": "1440.00",
+          "HIGH_PRICE": "1440.00",
+          "LOW_PRICE": "1419.30",
+          "LAST_PRICE": "1423.00",
+          "CLOSE_PRICE": "1422.80",
+          "AVG_PRICE": "1425.14",
+          "TTL_TRD_QNTY": "9399738",
+          "TURNOVER_LACS": "133959.56",
+          "NO_OF_TRADES": "245817",
+          "DELIV_QTY": "5102605",
+          "DELIV_PER": "54.28"
+        }
+      ]
+    },
+    {
+      "name": "hcl_results",
+      "url": "https://www.hcltech.com/sites/default/files/documents/investor-reports/Audited-Financial-Results-for-the-quarter-and-year-ended-March-31-2025.pdf",
+      "status": 200,
+      "content_type": "application/octet-stream",
+      "bytes": 6564909,
+      "final_url": "https://www.hcltech.com/sites/default/files/documents/investor-reports/Audited-Financial-Results-for-the-quarter-and-year-ended-March-31-2025.pdf",
+      "seconds": 2.23,
+      "pages": 29,
+      "first_page_text_chars": 2064
+    },
+    {
+      "name": "hcl_release",
+      "url": "https://www.hcltech.com/sites/default/files/documents/investor-reports/HCLTech_Q4_FY25_Investor_Release.pdf",
+      "status": 200,
+      "content_type": "application/octet-stream",
+      "bytes": 1503063,
+      "final_url": "https://www.hcltech.com/sites/default/files/documents/investor-reports/HCLTech_Q4_FY25_Investor_Release.pdf",
+      "seconds": 3.06,
+      "pages": 39,
+      "first_page_text_chars": 66
+    },
+    {
+      "name": "hcl_ar",
+      "url": "https://www.hcltech.com/sites/default/files/document/open/annual-report/2025-08/Annual-Report-2024-25_0.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 18399935,
+      "final_url": "https://www.hcltech.com/sites/default/files/document/open/annual-report/2025-08/Annual-Report-2024-25_0.pdf",
+      "seconds": 2.05,
+      "pages": 423,
+      "first_page_text_chars": 28
+    },
+    {
+      "name": "infy_ar_index",
+      "url": "https://www.infosys.com/investors/reports-filings/annual-report/annual-reports.html",
+      "error": "HTTP Error 403: Forbidden",
+      "seconds": 0.96
+    },
+    {
+      "name": "infy_announcement_api",
+      "url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=INFY&from_date=17-04-2025&to_date=18-04-2025",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 3890,
+      "final_url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=INFY&from_date=17-04-2025&to_date=18-04-2025",
+      "seconds": 1.05,
+      "record_count": 6,
+      "filing_records": [
+        {
+          "an_dt": "18-Apr-2025 14:55:50",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/Infosys_18042025145538_SEfiling_Newspaperad_Apr25.pdf",
+          "desc": "Updates",
+          "exchdisstime": "18-Apr-2025 14:55:50"
+        },
+        {
+          "an_dt": "18-Apr-2025 14:53:49",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/Infosys_18042025145336_Financialsnewspaperad_SEfiling_Apr25.pdf",
+          "desc": "Updates",
+          "exchdisstime": "18-Apr-2025 14:53:50"
+        },
+        {
+          "an_dt": "17-Apr-2025 23:48:34",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/Infosys_17042025234809_SEfiling_AuditorsreportwithUDINApr_2025.pdf",
+          "desc": "Updates",
+          "exchdisstime": "17-Apr-2025 23:48:34"
+        },
+        {
+          "an_dt": "17-Apr-2025 16:31:44",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/Infosys_17042025163121_BM_Outcome_April172025.pdf",
+          "desc": "Updates",
+          "exchdisstime": "17-Apr-2025 16:31:44"
+        },
+        {
+          "an_dt": "17-Apr-2025 16:28:26",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/Infosys_17042025162743_BM_Outcome_April172025.pdf",
+          "desc": "Record Date",
+          "exchdisstime": "17-Apr-2025 16:28:26"
+        },
+        {
+          "an_dt": "17-Apr-2025 16:23:14",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/Infosys_17042025162119_BM_Outcome_April172025.pdf",
+          "desc": "Outcome of Board Meeting",
+          "exchdisstime": "17-Apr-2025 16:23:14"
+        }
+      ]
+    },
+    {
+      "name": "hcl_announcement_api",
+      "url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=HCLTECH&from_date=22-04-2025&to_date=23-04-2025",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4620,
+      "final_url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=HCLTECH&from_date=22-04-2025&to_date=23-04-2025",
+      "seconds": 0.82,
+      "record_count": 7,
+      "filing_records": [
+        {
+          "an_dt": "22-Apr-2025 22:46:37",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/HCLTECH_22042025224624_Audio_Conference_Call.pdf",
+          "desc": "Analysts/Institutional Investor Meet/Con. Call Updates",
+          "exchdisstime": "22-Apr-2025 22:46:37"
+        },
+        {
+          "an_dt": "22-Apr-2025 18:09:20",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/HCLTECH_22042025180857_Stock_Intimation_letter-_Appointment_-_Secretarial_Auditor.pdf",
+          "desc": "Change in Auditors",
+          "exchdisstime": "22-Apr-2025 18:09:21"
+        },
+        {
+          "an_dt": "22-Apr-2025 18:05:35",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/HCLTECH_22042025180259_Resultsx_1.pdf",
+          "desc": "Record Date",
+          "exchdisstime": "22-Apr-2025 18:05:35"
+        },
+        {
+          "an_dt": "22-Apr-2025 17:57:55",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/HCLTECH_22042025175707_IFRS_1.pdf",
+          "desc": "General Updates",
+          "exchdisstime": "22-Apr-2025 17:57:55"
+        },
+        {
+          "an_dt": "22-Apr-2025 17:55:29",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/HCLTECH_22042025175510_Resultsx_1.pdf",
+          "desc": "Dividend",
+          "exchdisstime": "22-Apr-2025 17:55:30"
+        },
+        {
+          "an_dt": "22-Apr-2025 17:53:29",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/HCLTECH_22042025175316_InvestorRelease_1.pdf",
+          "desc": "Press Release",
+          "exchdisstime": "22-Apr-2025 17:53:30"
+        },
+        {
+          "an_dt": "22-Apr-2025 17:49:54",
+          "attchmntFile": "https://nsearchives.nseindia.com/corporate/HCLTECH_22042025174919_Resultsx_1.pdf",
+          "desc": "Outcome of Board Meeting",
+          "exchdisstime": "22-Apr-2025 17:49:54"
+        }
+      ]
+    },
+    {
+      "name": "infy_exchange_results",
+      "url": "https://nsearchives.nseindia.com/corporate/Infosys_17042025162119_BM_Outcome_April172025.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 13479064,
+      "seconds": 1.58,
+      "pages": 380
+    },
+    {
+      "name": "infy_jan_transcript",
+      "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2024-2025/q3/documents/transcripts/earningscall.pdf",
+      "error": "HTTP Error 403: Forbidden",
+      "seconds": 0.27
+    },
+    {
+      "name": "infy_apr_release",
+      "url": "https://www.infosys.com/investors/reports-filings/quarterly-results/2024-2025/q4/documents/ifrs-usd-press-release.pdf",
+      "error": "HTTP Error 403: Forbidden",
+      "seconds": 0.4
+    },
+    {
+      "name": "infy_ar25",
+      "url": "https://www.infosys.com/investors/reports-filings/annual-report/annual/documents/infosys-ar-25.pdf",
+      "error": "HTTP Error 403: Forbidden",
+      "seconds": 0.27
+    },
+    {
+      "name": "infy_ar24",
+      "url": "https://www.infosys.com/investors/reports-filings/annual-report/annual/documents/infosys-ar-24.pdf",
+      "error": "HTTP Error 403: Forbidden",
+      "seconds": 0.4
+    },
+    {
+      "name": "hcl_jan_transcript",
+      "url": "https://www.hcltech.com/sites/default/files/documents/investor-reports/HCLTech-Earnings-Jan13-2025_1.pdf",
+      "status": 200,
+      "content_type": "application/octet-stream",
+      "bytes": 186570,
+      "seconds": 1.21,
+      "pages": 19
+    },
+    {
+      "name": "hcl_apr_transcript",
+      "url": "https://www.hcltech.com/sites/default/files/document/open/call-trans/2025-04/HCLTech-Earnings-Q4FY25-Transcript.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 160364,
+      "seconds": 1.83,
+      "pages": 25
+    },
+    {
+      "name": "hcl_ar24",
+      "url": "https://www.hcltech.com/sites/default/files/document/open/annual-report/2024-08/HCLTech_Annual_Report2023-24.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 32416421,
+      "seconds": 8.52,
+      "pages": 364
+    },
+    {
+      "name": "infy_april_feed",
+      "url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=INFY&from_date=17-04-2025&to_date=30-04-2025",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 7842,
+      "seconds": 0.78,
+      "count": 12,
+      "call_related": [
+        {
+          "date": "22-Apr-2025 21:32:35",
+          "type": "Updates",
+          "description": "Infosys Limited has informed the Exchange regarding 'Earnings Call Transcript'.",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_22042025213147_SEfiling_Earningscalltranscript.pdf"
+        }
+      ]
+    },
+    {
+      "name": "hcl_april_feed",
+      "url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=HCLTECH&from_date=22-04-2025&to_date=30-04-2025",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 7238,
+      "seconds": 1.05,
+      "count": 11,
+      "call_related": [
+        {
+          "date": "25-Apr-2025 22:14:05",
+          "type": "Analysts/Institutional Investor Meet/Con. Call Updates",
+          "description": "HCL Technologies Limited has informed the Exchange about Transcript",
+          "url": "https://nsearchives.nseindia.com/corporate/HCLTECH_25042025221345_TranscriptEarningsCall.pdf"
+        },
+        {
+          "date": "22-Apr-2025 22:46:37",
+          "type": "Analysts/Institutional Investor Meet/Con. Call Updates",
+          "description": "HCL Technologies Limited has informed the Exchange about Link of Recording",
+          "url": "https://nsearchives.nseindia.com/corporate/HCLTECH_22042025224624_Audio_Conference_Call.pdf"
+        }
+      ]
+    },
+    {
+      "name": "current_nse_equities",
+      "url": "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv",
+      "status": 200,
+      "content_type": "text/csv",
+      "bytes": 185023,
+      "matched": [
+        {
+          "SYMBOL": "ASTRAL",
+          "NAME OF COMPANY": "Astral Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE006I01046"
+        },
+        {
+          "SYMBOL": "BHARTIARTL",
+          "NAME OF COMPANY": "Bharti Airtel Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE397D01024"
+        },
+        {
+          "SYMBOL": "CERA",
+          "NAME OF COMPANY": "Cera Sanitaryware Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE739E01017"
+        },
+        {
+          "SYMBOL": "HCLTECH",
+          "NAME OF COMPANY": "HCL Technologies Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE860A01027"
+        },
+        {
+          "SYMBOL": "HDFCBANK",
+          "NAME OF COMPANY": "HDFC Bank Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE040A01034"
+        },
+        {
+          "SYMBOL": "HINDUNILVR",
+          "NAME OF COMPANY": "Hindustan Unilever Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE030A01027"
+        },
+        {
+          "SYMBOL": "ICICIBANK",
+          "NAME OF COMPANY": "ICICI Bank Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE090A01021"
+        },
+        {
+          "SYMBOL": "INFY",
+          "NAME OF COMPANY": "Infosys Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE009A01021"
+        },
+        {
+          "SYMBOL": "LT",
+          "NAME OF COMPANY": "Larsen & Toubro Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE018A01030"
+        },
+        {
+          "SYMBOL": "MARUTI",
+          "NAME OF COMPANY": "Maruti Suzuki India Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE585B01010"
+        },
+        {
+          "SYMBOL": "POLYCAB",
+          "NAME OF COMPANY": "Polycab India Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE455K01017"
+        },
+        {
+          "SYMBOL": "RELIANCE",
+          "NAME OF COMPANY": "Reliance Industries Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE002A01018"
+        },
+        {
+          "SYMBOL": "SUNPHARMA",
+          "NAME OF COMPANY": "Sun Pharmaceutical Industries Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE044A01036"
+        },
+        {
+          "SYMBOL": "TITAN",
+          "NAME OF COMPANY": "Titan Company Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE280A01028"
+        },
+        {
+          "SYMBOL": "TRENT",
+          "NAME OF COMPANY": "Trent Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE849A01020"
+        },
+        {
+          "SYMBOL": "ULTRACEMCO",
+          "NAME OF COMPANY": "UltraTech Cement Limited",
+          " SERIES": "EQ",
+          " ISIN NUMBER": "INE481G01011"
+        }
+      ]
+    },
+    {
+      "name": "infy_exchange_ar25",
+      "url": "https://nsearchives.nseindia.com/corporate/Infosys_02062025172921_infosys-ar-2025.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 7591441,
+      "pages": 370
+    },
+    {
+      "name": "infy_exchange_apr_transcript",
+      "url": "https://nsearchives.nseindia.com/corporate/Infosys_22042025213147_SEfiling_Earningscalltranscript.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 660300,
+      "pages": 48
+    },
+    {
+      "name": "infy_jan_feed",
+      "url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=INFY&from_date=16-01-2025&to_date=24-01-2025",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 7180,
+      "record_count": 11,
+      "filing_records": [
+        {
+          "date": "24-Jan-2025 17:16:58",
+          "type": "Copy of Newspaper Publication",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_24012025171649_SEIntimation_advinnewspaper.pdf"
+        },
+        {
+          "date": "24-Jan-2025 17:06:16",
+          "type": "Updates",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_24012025170546_PR_24012025.pdf"
+        },
+        {
+          "date": "23-Jan-2025 21:27:11",
+          "type": "Updates",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_23012025212648_Regulation30disclosure.pdf"
+        },
+        {
+          "date": "21-Jan-2025 15:16:47",
+          "type": "Updates",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_21012025151633_SEfiling_Earningscalltranscript.pdf"
+        },
+        {
+          "date": "21-Jan-2025 15:07:38",
+          "type": "Updates",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_21012025150727_PR_21012025.pdf"
+        },
+        {
+          "date": "20-Jan-2025 21:23:29",
+          "type": "Updates",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_20012025212317_SEfiling_Regulation30.pdf"
+        },
+        {
+          "date": "19-Jan-2025 21:58:40",
+          "type": "Updates",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_19012025215821_SEfiling_AuditorsreportwithUDIN.pdf"
+        },
+        {
+          "date": "17-Jan-2025 17:35:59",
+          "type": "Copy of Newspaper Publication",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_17012025173542_Financialsnewspaperad_SEfiling_2025.pdf"
+        },
+        {
+          "date": "16-Jan-2025 16:30:36",
+          "type": "Integrated Filing- Financial",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_16012025163021_Integrated_financial_filing_16012025.pdf"
+        },
+        {
+          "date": "16-Jan-2025 15:57:06",
+          "type": "Outcome of Board Meeting",
+          "url": "https://nsearchives.nseindia.com/corporate/Infosys_16012025155641_BM_Outcome_January162025.pdf"
+        },
+        {
+          "date": "16-Jan-2025 15:55:31",
+          "type": "Financial Result Updates",
+          "url": "https://nsearchives.nseindia.com/corporate/BM_Outcome_January162025_16012025155531.pdf"
+        }
+      ]
+    },
+    {
+      "name": "infy_exchange_jan_transcript",
+      "url": "https://nsearchives.nseindia.com/corporate/Infosys_21012025151633_SEfiling_Earningscalltranscript.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 637107,
+      "pages": 45,
+      "verified_statement_page": 4
+    },
+    {
+      "name": "infy_june24_feed",
+      "url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=INFY&from_date=01-06-2024&to_date=08-06-2024",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4447,
+      "annual_report_records": []
+    },
+    {
+      "name": "infy_exchange_ar24",
+      "url": "https://nsearchives.nseindia.com/corporate/INFY_03062024153620_infosysar24.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 11441269,
+      "pages": 353
+    },
+    {
+      "name": "hcl_ar24_feed",
+      "url": "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=HCLTECH&from_date=01-07-2024&to_date=15-08-2024",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 23853,
+      "annual_report_records": [
+        {
+          "date": "13-Aug-2024 23:43:01",
+          "description": "HCL Technologies Limited has informed the Exchange regarding Proceedings of Annual General Meeting held on August 13, 2024. Further, the company has informed the Exchange regarding voting results along with copy of scrutinizers report together with copy of minutes.",
+          "type": "Shareholders meeting",
+          "url": "https://nsearchives.nseindia.com/corporate/HCLTECH_13082024234301_OutcomeAGM13aug2024.pdf"
+        },
+        {
+          "date": "22-Jul-2024 18:39:10",
+          "description": "HCL Technologies Limited has informed the Exchange regarding Notice of Annual General Meeting to be held on August 13, 2024",
+          "type": "Shareholders meeting",
+          "url": "https://nsearchives.nseindia.com/corporate/HCLTECH_22072024183910_HCLTechAGM2024.pdf"
+        }
+      ]
+    },
+    {
+      "name": "hcl_exchange_ar24",
+      "url": "https://nsearchives.nseindia.com/corporate/HCLTECH_22072024183910_HCLTechAGM2024.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "bytes": 31191765,
+      "pages": 385
+    }
+  ]
+}
