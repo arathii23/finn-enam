@@ -1,0 +1,24 @@
+# Render blueprint (proposal only). Not applied: creating it would provision a paid
+# service with a persistent disk. Verify plan/price and memory on the largest report first.
+services:
+  - type: web
+    name: finn
+    runtime: docker
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /api/health
+    disk:
+      name: finn-data
+      mountPath: /data
+      sizeGB: 2
+    envVars:
+      - key: FINN_DATA_DIR
+        value: /data
+      - key: ANTHROPIC_API_KEY
+        sync: false          # set in the Render dashboard; never committed
+      - key: FINN_MODEL_PROVIDER
+        value: anthropic
+      - key: FINN_MODEL_PRIMARY
+        value: claude-haiku-5-5
+      - key: FINN_API_BUDGET_USD
+        value: "10"

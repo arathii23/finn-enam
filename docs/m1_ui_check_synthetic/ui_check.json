@@ -1,0 +1,287 @@
+[
+  {
+    "check": "360px banner shows replay mode, filing dates and cutoff",
+    "status": "pass",
+    "detail": "FINN | Historical replay | Filings 17 Apr 2025 \u2013 30 Apr 2025 | Evidence available by 30 Apr 2025, 23:59 IST"
+  },
+  {
+    "check": "360px home: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=360 clientWidth=360"
+  },
+  {
+    "check": "360px company: identity, announcements, EOD, excluded docs",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "360px company: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=360 clientWidth=360"
+  },
+  {
+    "check": "360px company: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "360px research: honest partial state without model",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "360px research: replay date visible",
+    "status": "pass",
+    "detail": "\u2190 TESTCO\nHISTORICAL REPLAY \u00b7 AS OF 30 APR 2025, 23:59:59 IST\nTestco Industries Limited\n\n3 eligible documents \u00b7 prepared in 0s \u00b7 30 Oct 2026, 03:21:50 IST\n\nPARTIAL\nResearch prose not generated\nOPENAI_A"
+  },
+  {
+    "check": "360px research: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=360 clientWidth=360"
+  },
+  {
+    "check": "360px research: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "360px evidence: metadata, passage, cached + original links",
+    "status": "pass",
+    "detail": "[\"/api/documents/ver_c18caf8c48c3688e/file#page=2\", \"https://nsearchives.nseindia.com/corporate/TESTCO_q4_transcript.pdf\"]"
+  },
+  {
+    "check": "360px evidence: page locator matches citation",
+    "status": "pass",
+    "detail": "2 vs /api/documents/ver_c18caf8c48c3688e/file#page=2"
+  },
+  {
+    "check": "360px evidence sheet: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=360 clientWidth=360"
+  },
+  {
+    "check": "360px evidence: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "360px evidence: cached PDF endpoint returns PDF bytes",
+    "status": "pass",
+    "detail": "%PDF-"
+  },
+  {
+    "check": "360px evidence: Escape closes and focus returns",
+    "status": "pass",
+    "detail": "passage-btn"
+  },
+  {
+    "check": "360px unknown ticker shows distinct empty state",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "360px loading state shows stages and elapsed time",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "360px server failure state",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "360px no JavaScript errors",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "390px banner shows replay mode, filing dates and cutoff",
+    "status": "pass",
+    "detail": "FINN | Historical replay | Filings 17 Apr 2025 \u2013 30 Apr 2025 | Evidence available by 30 Apr 2025, 23:59 IST"
+  },
+  {
+    "check": "390px home: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=390 clientWidth=390"
+  },
+  {
+    "check": "390px company: identity, announcements, EOD, excluded docs",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "390px company: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=390 clientWidth=390"
+  },
+  {
+    "check": "390px company: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "390px research: honest partial state without model",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "390px research: replay date visible",
+    "status": "pass",
+    "detail": "\u2190 TESTCO\nHISTORICAL REPLAY \u00b7 AS OF 30 APR 2025, 23:59:59 IST\nTestco Industries Limited\n\n3 eligible documents \u00b7 prepared in 1s \u00b7 30 Oct 2026, 03:21:51 IST\n\nPARTIAL\nResearch prose not generated\nOPENAI_A"
+  },
+  {
+    "check": "390px research: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=390 clientWidth=390"
+  },
+  {
+    "check": "390px research: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "390px evidence: metadata, passage, cached + original links",
+    "status": "pass",
+    "detail": "[\"/api/documents/ver_c18caf8c48c3688e/file#page=2\", \"https://nsearchives.nseindia.com/corporate/TESTCO_q4_transcript.pdf\"]"
+  },
+  {
+    "check": "390px evidence: page locator matches citation",
+    "status": "pass",
+    "detail": "2 vs /api/documents/ver_c18caf8c48c3688e/file#page=2"
+  },
+  {
+    "check": "390px evidence sheet: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=390 clientWidth=390"
+  },
+  {
+    "check": "390px evidence: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "390px evidence: cached PDF endpoint returns PDF bytes",
+    "status": "pass",
+    "detail": "%PDF-"
+  },
+  {
+    "check": "390px evidence: Escape closes and focus returns",
+    "status": "pass",
+    "detail": "passage-btn"
+  },
+  {
+    "check": "390px unknown ticker shows distinct empty state",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "390px loading state shows stages and elapsed time",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "390px server failure state",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "390px no JavaScript errors",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "430px banner shows replay mode, filing dates and cutoff",
+    "status": "pass",
+    "detail": "FINN | Historical replay | Filings 17 Apr 2025 \u2013 30 Apr 2025 | Evidence available by 30 Apr 2025, 23:59 IST"
+  },
+  {
+    "check": "430px home: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=430 clientWidth=430"
+  },
+  {
+    "check": "430px company: identity, announcements, EOD, excluded docs",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "430px company: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=430 clientWidth=430"
+  },
+  {
+    "check": "430px company: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "430px research: honest partial state without model",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "430px research: replay date visible",
+    "status": "pass",
+    "detail": "\u2190 TESTCO\nHISTORICAL REPLAY \u00b7 AS OF 30 APR 2025, 23:59:59 IST\nTestco Industries Limited\n\n3 eligible documents \u00b7 prepared in 3s \u00b7 30 Oct 2026, 03:21:53 IST\n\nPARTIAL\nResearch prose not generated\nOPENAI_A"
+  },
+  {
+    "check": "430px research: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=430 clientWidth=430"
+  },
+  {
+    "check": "430px research: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "430px evidence: metadata, passage, cached + original links",
+    "status": "pass",
+    "detail": "[\"/api/documents/ver_c18caf8c48c3688e/file#page=2\", \"https://nsearchives.nseindia.com/corporate/TESTCO_q4_transcript.pdf\"]"
+  },
+  {
+    "check": "430px evidence: page locator matches citation",
+    "status": "pass",
+    "detail": "2 vs /api/documents/ver_c18caf8c48c3688e/file#page=2"
+  },
+  {
+    "check": "430px evidence sheet: no horizontal overflow",
+    "status": "pass",
+    "detail": "scrollWidth=430 clientWidth=430"
+  },
+  {
+    "check": "430px evidence: touch targets >= 44px",
+    "status": "pass",
+    "detail": "[]"
+  },
+  {
+    "check": "430px evidence: cached PDF endpoint returns PDF bytes",
+    "status": "pass",
+    "detail": "%PDF-"
+  },
+  {
+    "check": "430px evidence: Escape closes and focus returns",
+    "status": "pass",
+    "detail": "passage-btn"
+  },
+  {
+    "check": "430px unknown ticker shows distinct empty state",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "430px loading state shows stages and elapsed time",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "430px server failure state",
+    "status": "pass",
+    "detail": ""
+  },
+  {
+    "check": "430px no JavaScript errors",
+    "status": "pass",
+    "detail": "[]"
+  }
+]

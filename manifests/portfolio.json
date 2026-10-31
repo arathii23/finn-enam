@@ -1,0 +1,7 @@
+{
+  "_comment": "Mock 15-company NSE portfolio for the Push/review queue (assignment allows 15-20). Configurable; not investment advice, no weights. Identities resolve via the NSE security master at ingest time.",
+  "portfolio_id": "finn-mock-15",
+  "symbols": ["INFY", "HCLTECH", "RELIANCE", "HDFCBANK", "ICICIBANK", "BHARTIARTL", "LT", "MARUTI",
+              "HINDUNILVR", "SUNPHARMA", "ULTRACEMCO", "TITAN", "TRENT", "ASTRAL", "CERA"],
+  "anomaly_defaults": {"price_move_pct": 5.0, "volume_multiple": 2.0, "baseline_sessions": 20, "min_baseline_sessions": 5}
+}
