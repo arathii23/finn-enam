@@ -251,8 +251,9 @@ class GeminiClient(ResponsesClient):
                     if mid.startswith("gemini-"):
                         ids.append(mid)
                 if ids and requested not in ids:
-                    skip = ("embedding", "tts", "image", "vision", "audio", "live")
-                    prefs = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]
+                    skip = ("embedding", "tts", "image", "vision", "audio", "live", "robotics", "computer-use")
+                    # Prefer a stable GA flash model; "latest"/preview aliases overload more often.
+                    prefs = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"]
                     chosen = (next((p for p in prefs if p in ids), None)
                               or next((m for m in ids if "flash" in m and not any(s in m for s in skip)), None)
                               or next((m for m in ids if not any(s in m for s in skip)), None)
@@ -281,16 +282,25 @@ class GeminiClient(ResponsesClient):
             "max_tokens": max_output_tokens,
             "temperature": 0,
         }
-        try:
-            resp = self.http.post(f"{self.settings.gemini_base_url}/chat/completions", json=body,
-                                  headers={"Authorization": f"Bearer {self.settings.gemini_api_key}"})
-        except httpx.HTTPError as exc:
-            self.ledger.reconcile(call_id, model, {}, "transport_error")
-            return ModelResult("error", None, model, error=f"transport error: {exc.__class__.__name__}")
+        import time as _time
+        resp = None
+        for attempt in range(3):
+            try:
+                resp = self.http.post(f"{self.settings.gemini_base_url}/chat/completions", json=body,
+                                      headers={"Authorization": f"Bearer {self.settings.gemini_api_key}"})
+            except httpx.HTTPError as exc:
+                if attempt < 2:
+                    _time.sleep(1.5 * (attempt + 1)); continue
+                self.ledger.reconcile(call_id, model, {}, "transport_error")
+                return ModelResult("error", None, model, error=f"transport error: {exc.__class__.__name__}")
+            # Free/preview models can be briefly overloaded; retry transient errors before degrading.
+            if resp.status_code in (429, 500, 502, 503) and attempt < 2:
+                _time.sleep(2.0 * (attempt + 1)); continue
+            break
         if resp.status_code != 200:
             self.ledger.reconcile(call_id, model, {}, f"http_{resp.status_code}")
             # Rate limit, auth and access failures are not malformed answers; degrade to keyless.
-            raise ModelUnavailable(f"Gemini API returned HTTP {resp.status_code}; check the free-tier key, model access and rate limit")
+            raise ModelUnavailable(f"Gemini API returned HTTP {resp.status_code} after retries; the free model may be momentarily overloaded or rate-limited—retry shortly")
         try:
             payload = resp.json()
         except ValueError:
