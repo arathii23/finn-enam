@@ -55,7 +55,9 @@ Prototype — two free links, both open on a phone with no install or login:
     grounded in and validated against the primary sources. Free instances sleep after ~15 min idle
     and wake in ~1 minute, so the always-on link above is the primary one.
 Repository: https://github.com/arathii23/finn-enam
-Authentic AI build conversations: [your Claude Code / ChatGPT export or share links]
+AI build history:
+  • Claude Code (primary coding agent): https://claude.ai/share/e6988c97-2cb5-49ec-a81c-29eb6924848d
+  • ChatGPT: [your ChatGPT share link]
 
 Regards,
 [Name]
