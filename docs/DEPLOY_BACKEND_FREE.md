@@ -1,57 +1,47 @@
-# Deploying the FINN live backend for free (Hugging Face Spaces)
+# Deploying the FINN live backend for free (Render)
 
-The static demo covers almost everything. This adds the **live, on-demand research** backend —
-fresh analysis for any NSE ticker, powered by Google Gemini's **free** tier, with live Yahoo
-prices. Hosted free on **Hugging Face Spaces** (Docker): 16 GB RAM (enough to parse large PDFs),
-HTTPS, no card required. Free Spaces sleep after ~48 h of no visits and wake on the next visit.
+The static demo (GitHub Pages) is complete and always-on. This adds the **live, on-demand
+research** tier — fresh analysis for any NSE ticker, powered by Google Gemini's **free** key —
+hosted free on **Render** (no credit card).
 
-The Space repo is tiny — just `deploy/hf-space/Dockerfile` + `deploy/hf-space/README.md`. The
-image pulls the app from this public GitHub repo and the verified corpus from this repo's GitHub
-Release, so you don't upload any large files to Hugging Face.
+> Note: Hugging Face now charges for Docker/compute Spaces, so it is no longer a free option.
+> Render still offers a free web-service tier. It **sleeps after ~15 min idle** and wakes on the
+> next request (~1 min), and has **512 MB RAM** — fine for the seeded portfolio companies; a
+> brand-new ticker with a very large annual report may exceed memory (it degrades to a clear
+> source gap). The always-instant link remains the static demo.
 
-## Prerequisites (one-time, free)
-1. A **GitHub Release** of the corpus exists on this repo (asset `finn-seed.tar.gz`). If not,
-   create it from the repo root (publishes the public primary-source data):
-   ```bash
-   tar -czf finn-seed.tar.gz -C data finn.sqlite3 sources
-   gh release create corpus-2026-11-03 --repo arathii23/finn-enam \
-     --title "FINN corpus seed" --notes "Primary-source corpus for the backend." \
-     finn-seed.tar.gz
-   ```
-2. A free **Hugging Face** account: https://huggingface.co/join
-3. A free **Gemini** API key: https://aistudio.google.com/apikey
+Everything is pre-wired: the root `Dockerfile` builds the app and bakes in the corpus from this
+repo's GitHub Release; `render.yaml` sets the free plan and the Gemini provider.
+
+## Prerequisites (free)
+1. The corpus **GitHub Release** exists (`finn-seed.tar.gz` on tag `corpus-2026-11-03`) — already published.
+2. A free **Render** account: https://render.com (sign up with GitHub — no card).
+3. A free **Gemini** API key: https://aistudio.google.com/apikey (no card).
 
 ## Deploy (about 5 minutes)
-1. Create a new Space: https://huggingface.co/new-space → **SDK: Docker**, blank template,
-   name e.g. `finn`. This gives you a git repo at
-   `https://huggingface.co/spaces/<you>/finn`.
-2. Put the two files in it and push:
-   ```bash
-   git clone https://huggingface.co/spaces/<you>/finn && cd finn
-   cp /path/to/finn-enam/deploy/hf-space/Dockerfile .
-   cp /path/to/finn-enam/deploy/hf-space/README.md .
-   git add Dockerfile README.md && git commit -m "FINN backend" && git push
-   ```
-   (First push asks for your HF username + an access token as the password:
-   https://huggingface.co/settings/tokens — a "write" token.)
-3. In the Space → **Settings → Variables and secrets → New secret**:
-   `GEMINI_API_KEY` = your free key. (Skip to run keyless.)
-4. The Space builds (a few minutes — it clones the repo, builds the UI, downloads the corpus).
-   When it's running, your live backend is at `https://<you>-finn.hf.space`.
+1. Render dashboard → **New +** → **Blueprint** → connect the GitHub repo `arathii23/finn-enam`.
+   Render reads `render.yaml` and creates the `finn` web service on the **free** plan.
+   (Or: **New +** → **Web Service** → pick the repo → Runtime **Docker** → Instance type **Free**.)
+2. When prompted for env vars, set **`GEMINI_API_KEY`** = your free key. (Leave blank to run keyless.)
+3. Click **Create / Deploy**. The first build takes a few minutes (builds the UI, installs deps,
+   downloads the ~118 MB corpus into the image).
+4. When it goes live you get an HTTPS URL like `https://finn-xxxx.onrender.com`.
 
 ## Verify
-- Open `https://<you>-finn.hf.space/api/health` → JSON with `"model_provider":"gemini"` and a
-  non-zero `corpus` count.
-- Open the app on a phone → **Research** tab → open a company → ask a question. With the key set,
-  you get a Gemini-written, source-validated brief; without it, the verbatim extractive brief.
-- Live prices and the full digest work the same as the static demo, now served live.
+- Open `https://finn-xxxx.onrender.com/api/health` → JSON with `"model_provider":"gemini"` and a
+  non-zero `corpus` document count.
+- Open the app → **Research** → open a company → ask a question. With the key set you get a
+  Gemini-written, source-validated brief; without it, the verbatim extractive brief.
+- The Push digest, saved briefs, evidence and live prices all work, now served live.
 
-## Notes & limits (honest)
-- Free Spaces **sleep after ~48 h** of inactivity and cold-start on the next visit (~30–60 s).
-  The static GitHub Pages demo remains the always-instant link; this backend is the "live" tier.
-- New research jobs write to the in-image SQLite and are **ephemeral** (lost on restart); the
-  seeded saved briefs and corpus persist because they're baked into the image.
-- On a datacenter IP, NSE may throttle fresh discovery for brand-new tickers; portfolio tickers
-  already have their sources in the seed, and failures surface as explicit source gaps.
-- Budget guards still apply ($5 total / $0.25 per job of list-price reservations; Gemini free
-  tier reserves $0). A rate-limited model degrades to the keyless source brief.
+## Honest limits
+- Free instance **sleeps after ~15 min** idle; first hit after that is slow (~1 min cold start).
+- **512 MB RAM**: seeded companies research fine (FTS over the stored corpus); discovering and
+  parsing a brand-new very large PDF can exceed memory and will surface as a source gap, not a crash.
+- New research jobs write to the in-image SQLite and are **ephemeral** (reset on restart/redeploy);
+  the seeded saved briefs and corpus persist (baked into the image).
+- Budget guards apply ($5 total / $0.25 per job of list-price reservations; the Gemini free tier
+  reserves $0). A rate-limited model degrades to the keyless source brief.
+
+If you'd rather not deal with sleep/memory: **Google Cloud Run** has a better free tier (more RAM,
+fast cold starts) but requires a card on file. The same `Dockerfile` deploys there too.
