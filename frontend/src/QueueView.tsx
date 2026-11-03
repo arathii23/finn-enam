@@ -154,36 +154,57 @@ export function QueueView({ onOpenCompany, onResearchEvent }: {
     {done.length > 0 && <Section title={`Reviewed (${done.length})`} aside={<button className="btn btn-small btn-ghost" aria-expanded={showReviewed} onClick={() => setShowReviewed(!showReviewed)}>{showReviewed ? "Hide reviewed" : "Show reviewed"}</button>}>
       {showReviewed ? done.map((c) => <CompanyCard key={c.symbol} c={c} reviewed onToggle={() => toggleReviewed(original(c))} onOpenCompany={openCompany} onResearchEvent={research} />) : <p className="muted">{done.map((c) => c.symbol).join(", ")}</p>}
     </Section>}
-    {!IS_STATIC && <LivePricesCard />}
+    {(!IS_STATIC || import.meta.env.VITE_LIVE_PRICES_URL) && <LivePricesCard />}
     <p className="fine review-coverage">{data.summary.checked}/{data.summary.companies} holdings have stored data. Metadata coverage does not mean every attachment has been read.</p>
     {noData.length > 0 && <Section title="Source coverage gaps"><p className="fine">No stored activity for these holdings. Open a company to inspect its source inventory.</p><div className="prepared">{noData.map((c) => <button className="btn btn-small" key={c.symbol} onClick={() => openCompany(c.symbol)}>{c.symbol}</button>)}</div></Section>}
   </div>;
 }
 
+function relativeTime(iso: string): string {
+  const secs = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
+  if (secs < 90) return "just now";
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  return hrs < 24 ? `${hrs} h ago` : `${Math.round(hrs / 24)} d ago`;
+}
+
 function LivePricesCard() {
-  const [open, setOpen] = useState(false);
+  const auto = IS_STATIC; // static build reads an auto-refreshed feed; open and poll it
+  const [open, setOpen] = useState(auto);
   const [data, setData] = useState<LivePrices | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const load = () => {
+  const [, setTick] = useState(0); // re-render so "x min ago" stays current
+  const load = useCallback(() => {
     setLoading(true); setError(null);
-    api.livePrices().then(setData).catch((e: ApiError) => setError(e.message)).finally(() => setLoading(false));
-  };
+    api.livePrices().then((d) => { setData(d); setError(null); }).catch((e: ApiError) => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    if (!data && !loading) load();
+    // In the static auto-feed build, refresh while the page is open and keep the clock live.
+    if (!auto) return;
+    const refresh = window.setInterval(load, 120000);
+    const clock = window.setInterval(() => setTick((t) => t + 1), 30000);
+    return () => { window.clearInterval(refresh); window.clearInterval(clock); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const toggle = () => { const next = !open; setOpen(next); if (next && !data && !loading) load(); };
   const pct = (n: number | null | undefined) => (n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(1)}%`);
   return (
     <section className="card">
       <button className="btn btn-small btn-ghost" aria-expanded={open} onClick={toggle} style={{ padding: 0 }}>
-        {open ? "▾" : "▸"} Live market snapshot · free Yahoo EOD
+        {open ? "▾" : "▸"} Live market snapshot · free Yahoo EOD{data ? ` · updated ${relativeTime(data.retrieved_at)}` : ""}
       </button>
       {open && (
         <div style={{ marginTop: "0.6rem" }}>
-          <p className="fine" style={{ marginTop: 0 }}>Live end-of-day from Yahoo Finance (free, no key). Separate from the stored replay above; raw prices, a move is not attributed to any filing.</p>
-          {loading && <p className="fine" role="status">Fetching live prices…</p>}
-          {error && <StateBox kind="error" title="Live prices unavailable" action={<button className="btn btn-small" onClick={load}>Retry</button>}>{error}</StateBox>}
+          <p className="fine" style={{ marginTop: 0 }}>Live prices from Yahoo Finance (free, no key){auto ? ", auto-refreshed on a schedule" : ""}. Separate from the stored replay above; raw prices, a move is not attributed to any filing.</p>
+          {loading && !data && <p className="fine" role="status">Fetching live prices…</p>}
+          {error && !data && <StateBox kind="error" title="Live prices unavailable" action={<button className="btn btn-small" onClick={load}>Retry</button>}>{error}</StateBox>}
           {data && (
             <>
-              <p className="fine">{data.summary.ok}/{data.summary.companies} live · {data.summary.flagged} flagged at {data.thresholds.price_move_pct}% / {data.thresholds.volume_multiple}×</p>
+              <p className="fine">{data.summary.ok}/{data.summary.companies} live · {data.summary.flagged} flagged at {data.thresholds.price_move_pct}% / {data.thresholds.volume_multiple}× · updated {relativeTime(data.retrieved_at)}{loading ? " · refreshing…" : ""}</p>
               <table className="eod-table"><thead><tr><th>Symbol</th><th>Close</th><th>Day</th><th>Vol×</th></tr></thead>
                 <tbody>{data.companies.map((c) => (
                   <tr key={c.symbol} className={c.anomaly?.flagged ? "flagged-row" : ""}>
@@ -194,7 +215,7 @@ function LivePricesCard() {
                   </tr>
                 ))}</tbody>
               </table>
-              <p className="fine">Retrieved {new Date(data.retrieved_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · {data.companies.find((c) => c.currency)?.currency ?? "INR"}. {data.disclaimer}</p>
+              <p className="fine">Last updated {new Date(data.retrieved_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · {data.companies.find((c) => c.currency)?.currency ?? "INR"}. {data.disclaimer}</p>
             </>
           )}
         </div>
