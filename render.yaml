@@ -14,11 +14,15 @@ services:
     envVars:
       - key: FINN_DATA_DIR
         value: /data
-      - key: ANTHROPIC_API_KEY
-        sync: false          # set in the Render dashboard; never committed
+      # Free by default: leave GEMINI_API_KEY blank for the keyless build (no model, no spend),
+      # or paste a free Google AI Studio key for genuine synthesis at zero per-token cost.
       - key: FINN_MODEL_PROVIDER
-        value: anthropic
-      - key: FINN_MODEL_PRIMARY
-        value: claude-haiku-5-5
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false          # set a free AI Studio key in the dashboard, or leave blank
+      - key: FINN_MODEL_PRIMARY_EFFORT
+        value: low
       - key: FINN_API_BUDGET_USD
-        value: "10"
+        value: "5"
+      - key: FINN_JOB_BUDGET_USD
+        value: "0.25"

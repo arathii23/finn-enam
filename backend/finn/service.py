@@ -5,21 +5,34 @@ import json
 import queue
 import threading
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .config import PROMPT_VERSION, Settings
+from .compare import build_narrative_numbers
+from .config import IST, PROMPT_VERSION, Settings
 from .contracts import Gap, ResearchRequest
 from .discovery import discover_company_sources
 from .db import Store, new_id, sha256_bytes, utcnow
 from .llm import ResponsesClient, create_model_client
 from .replay import ReplayConfig, announcements_in_window, classify_versions, load_manifest
 from .prioritize import classify, eod_anomaly
+from . import management, quarterly
 from .research import run_research
 from .sources import nse
 from .sources.fetch import Fetcher
 
 STAGES = ["resolving_company", "discovering_sources", "downloading_sources", "finding_documents", "reading_sources", "preparing_research"]
+
+
+def _fiscal_end_year(cutoff_utc: Optional[str]) -> int:
+    """End-year of the Indian fiscal year (Apr–Mar) in progress at the cutoff.
+
+    A guidance for that year or later has no known outcome yet, so it is shown as pending.
+    """
+    from datetime import datetime
+    dt = datetime.fromisoformat(cutoff_utc).astimezone(IST) if cutoff_utc else datetime.now(IST)
+    return dt.year + 1 if dt.month >= 4 else dt.year
 
 
 class NotFound(Exception):
@@ -123,6 +136,198 @@ class App:
             raise NotFound("not_found", "document version not found")
         return self._ver_public({**v, "identification": json.loads(v["identification"])})
 
+    # ------------------------------------------------------------ quarterly results first cut (Push)
+    def management_changes(self, symbol: str, mode: str = "replay") -> Dict[str, Any]:
+        """Eligible appointment context, including clearly labelled pre-window filings."""
+        company = self.company(symbol)
+        cfg = self.replay if mode == "replay" else None
+        eligible, _ = classify_versions(self.store, company["company_id"], mode, cfg.cutoff_utc if cfg else None)
+        filings = {v["version_id"]: v for v in eligible if v["doc_type"] == "exchange_filing"}
+        in_window = {a["announcement_id"] for a in announcements_in_window(self.store, company["company_id"], cfg)}
+        anns = self.store.query("SELECT * FROM announcements WHERE company_id=? ORDER BY published_at DESC, announcement_id", (company["company_id"],))
+        items, seen = [], set()
+        for a in anns:
+            vid = a.get("attachment_version_id")
+            if vid not in filings or vid in seen:
+                continue
+            if cfg:
+                try:
+                    stamp = datetime.fromisoformat(a.get("published_at") or "")
+                except (TypeError, ValueError):
+                    continue
+                if stamp.tzinfo is None or stamp > datetime.fromisoformat(cfg.cutoff_utc):
+                    continue
+            if classify(a.get("category"), a.get("subject"))["ref_category"] != "management_change":
+                continue
+            rows = self.store.query("SELECT passage_id, text, page_index FROM passages WHERE version_id=? ORDER BY page_index, seq", (vid,))
+            item = management.extract_appointment(a.get("subject") or "", rows)
+            if item:
+                seen.add(vid)
+                items.append({**item, "announcement_id": a["announcement_id"], "version_id": vid,
+                              "published_at": filings[vid]["published_at"],
+                              "in_review_window": a["announcement_id"] in in_window})
+            if len(items) == 3:
+                break
+        return {"symbol": company["symbol"], "mode": mode, "served": "deterministic", "items": items,
+                "method": "Quotes from eligible appointment filings already in the corpus; not a complete management history.",
+                "empty_reason": None if items else "No named appointment with a verified role, date and brief profile could be read from the eligible filings."}
+
+    def quarterly_results(self, symbol: str, mode: str = "replay", force: bool = False,
+                          allow_extract: bool = False) -> Dict[str, Any]:
+        """Read/revalidate saved results by default; extraction needs explicit opt-in."""
+        try:
+            company = nse.resolve_company(self.store, symbol)
+        except nse.IdentityError as exc:
+            raise NotFound(exc.state, str(exc)) from exc
+        cfg = self.replay if mode == "replay" else None
+        eligible, _ = classify_versions(self.store, company.company_id, mode, cfg.cutoff_utc if cfg else None)
+        filings = [v for v in eligible if v["doc_type"] == "exchange_filing"]
+        base = {"symbol": company.symbol, "legal_name": company.legal_name, "mode": mode}
+        if not filings:
+            return {**base, "available": False, "can_extract": False, "extraction_required": False,
+                    "reason": "No eligible results filing is stored for this company."}
+        ph = ",".join("?" * len(filings))
+        rows = self.store.query(
+            f"SELECT passage_id, version_id, page_index, text FROM passages WHERE version_id IN ({ph}) ORDER BY version_id, page_index, seq",
+            tuple(v["version_id"] for v in filings))
+        meta = {v["version_id"]: v for v in filings}
+        passages = [{**r, "doc_type": "exchange_filing"} for r in rows]
+        selected = quarterly.select_pnl_passages(passages)
+        selected_version = selected[0]["version_id"] if selected else None
+        fp = sha256_bytes(json.dumps(sorted(p["passage_id"] for p in selected)).encode())[:16]
+        key = f"quarterly:{company.company_id}:{quarterly.VALIDATION_VERSION}:{fp}"
+
+        if not force and selected_version:
+            # Legacy caches retain their original bytes. Revalidate their recorded
+            # figures against eligible source pages in memory, without another call.
+            cached_rows = self.store.query(
+                "SELECT cache_key, result FROM derived_cache WHERE kind='quarterly' AND cache_key LIKE ? ORDER BY created_at DESC",
+                (f"quarterly:{company.company_id}:%",))
+            cached_rows.sort(key=lambda r: r["cache_key"] != key)
+            by_id = {p["passage_id"]: p for p in passages if p["version_id"] == selected_version}
+            for cached_row in cached_rows:
+                saved = json.loads(cached_row["result"])
+                if ((saved.get("source") or {}).get("version_id") != selected_version
+                        and not (cached_row["cache_key"] == key and not saved.get("metrics"))):
+                    continue
+                if not saved.get("metrics"):
+                    return {**base, **saved, "served": "cached", "can_extract": False,
+                            "extraction_required": False, "validation_version": quarterly.VALIDATION_VERSION}
+                # An unavailable or cross-version citation cannot enter validation.
+                safe = {**saved, "metrics": [m for m in saved.get("metrics", []) if m.get("evidence_id") in by_id]}
+                source_passages = list(by_id.values())
+                checked = quarterly.validate_and_compute(quarterly.cached_extraction(safe),
+                            {pid: p["text"] for pid, p in by_id.items()}, quarterly.page_contexts(source_passages))
+                for metric in checked["metrics"]:
+                    p = by_id[metric["evidence_id"]]
+                    v = meta[p["version_id"]]
+                    metric["source"] = {"version_id": p["version_id"], "page_index": p["page_index"],
+                                        "published_at": v.get("published_at"), "period_label": v.get("period_label")}
+                source = checked["metrics"][0]["source"] if checked["metrics"] else saved.get("source")
+                return {**base, **checked, "available": bool(checked["metrics"]), "served": "cached",
+                        "generation": saved.get("generation"), "source": source,
+                        "can_extract": False, "extraction_required": False,
+                        **({"reason": "The saved extraction contains no figures that pass the current source checks."}
+                           if not checked["metrics"] else {})}
+        if not selected:
+            return {**base, "available": False, "can_extract": False, "extraction_required": False,
+                    "reason": "No dated quarterly statement could be identified in the stored filings."}
+        configured = self.client is not None and self.settings.model_configured
+        if not allow_extract:
+            return {**base, "available": False, "can_extract": configured, "extraction_required": True,
+                    "reason": "The filing is stored; a quarterly extraction has not been saved yet."}
+        if not configured:
+            return {**base, "available": False, "can_extract": False, "extraction_required": True,
+                    "reason": "New extraction is unavailable. The stored primary filing remains accessible."}
+
+        result = self._extract_quarterly(company, selected, meta)
+        # Completed abstentions are cached; transient provider/budget failures remain retryable.
+        if result.get("available") or result.get("generation"):
+            self.store.execute("INSERT OR REPLACE INTO derived_cache (cache_key, kind, result, created_at) VALUES (?,?,?,?)",
+                               (key, "quarterly", json.dumps(result), utcnow()))
+        return {**base, **result}
+
+    def _extract_quarterly(self, company, selected, meta) -> Dict[str, Any]:
+        from .llm import BudgetExceeded, ModelUnavailable
+        if len({p["version_id"] for p in selected}) != 1:
+            return {"available": False, "reason": "Extraction requires a single source filing."}
+        def esc(t): return (t or "").replace("<", "‹").replace(">", "›")
+        lines = [f"Company: {company.legal_name} (NSE: {company.symbol})"]
+        for p in selected:
+            lines.append(f'<statement id="{p["passage_id"]}" page="{p["page_index"]}">\n{esc(p["text"])}\n</statement>')
+        model = "claude-haiku-5-5" if self.settings.model_provider == "anthropic" else self.settings.model_primary
+        try:
+            res = self.client.generate(job_id=None, model=model, effort="low", system=quarterly.SYSTEM_PROMPT,
+                                       user="\n".join(lines), schema=quarterly.EXTRACT_SCHEMA,
+                                       schema_name="finn_quarterly", max_output_tokens=2200)
+        except (ModelUnavailable, BudgetExceeded) as exc:
+            return {"available": False, "can_extract": self.settings.model_configured, "extraction_required": True,
+                    "reason": f"Extraction did not run: {exc}"}
+        if res.status != "completed" or res.data is None:
+            return {"available": False, "can_extract": True, "extraction_required": True,
+                    "reason": f"Table extraction failed: {res.error or res.status}."}
+        by_id = {p["passage_id"]: p for p in selected}
+        computed = quarterly.validate_and_compute(res.data, {pid: p["text"] for pid, p in by_id.items()},
+                                                   quarterly.page_contexts(selected))
+        for metric in computed["metrics"]:
+            p = by_id[metric["evidence_id"]]
+            v = meta[p["version_id"]]
+            metric["source"] = {"version_id": p["version_id"], "page_index": p["page_index"],
+                                "published_at": v.get("published_at"), "period_label": v.get("period_label")}
+        first = selected[0]
+        v = meta[first["version_id"]]
+        source = computed["metrics"][0]["source"] if computed["metrics"] else {
+            "version_id": first["version_id"], "page_index": first["page_index"],
+            "period_label": v.get("period_label"), "published_at": v.get("published_at")}
+        return {"available": bool(computed["metrics"]), "served": "generated", "source": source,
+                "generation": {"model": model, "usage": res.usage}, "can_extract": False,
+                "extraction_required": False, **computed,
+                **({"reason": "No headline figures passed verification against the filing."} if not computed["metrics"] else {})}
+
+    # ------------------------------------------------------------ numbers vs narrative (Pull)
+    def narrative_numbers(self, symbol: str, mode: str = "replay") -> Dict[str, Any]:
+        """Deterministic promised-vs-delivered view from eligible transcripts and filings."""
+        try:
+            company = nse.resolve_company(self.store, symbol)
+        except nse.IdentityError as exc:
+            raise NotFound(exc.state, str(exc)) from exc
+        cfg = self.replay if mode == "replay" else None
+        cutoff = cfg.cutoff_utc if cfg else None
+        eligible, _ = classify_versions(self.store, company.company_id, mode, cutoff)
+        versions = [v for v in eligible if v["doc_type"] in ("earnings_call_transcript", "exchange_filing")]
+        management: set = set()
+        for v in versions:
+            if v["doc_type"] == "earnings_call_transcript":
+                management.update((v.get("identification") or {}).get("management_speakers") or [])
+
+        passages: List[Dict[str, Any]] = []
+        meta = {v["version_id"]: v for v in versions}
+        if versions:
+            ph = ",".join("?" * len(versions))
+            rows = self.store.query(
+                f"SELECT passage_id, version_id, page_index, speaker, text FROM passages WHERE version_id IN ({ph}) ORDER BY version_id, seq",
+                tuple(meta))
+            for r in rows:
+                v = meta[r["version_id"]]
+                passages.append({**r, "doc_type": v["doc_type"], "period_label": v.get("period_label"),
+                                 "published_at": v.get("published_at")})
+
+        result = build_narrative_numbers(company.symbol, company.legal_name, passages,
+                                         cfg.cutoff_display if cfg else None,
+                                         cutoff_end_year=_fiscal_end_year(cutoff), management=management)
+        # Evidence index so the UI can label and open each cited passage, same as research.
+        idx = {}
+        for p in passages:
+            v = meta[p["version_id"]]
+            idx[p["passage_id"]] = {"version_id": p["version_id"], "doc_type": p["doc_type"],
+                                    "period_label": v.get("period_label"), "page_index": p["page_index"],
+                                    "speaker": p.get("speaker"), "published_at": v.get("published_at"),
+                                    "excerpt": (p["text"] or "")[:280]}
+        result.update(company=company.model_dump(), mode=mode, cutoff=cutoff, evidence_index=idx,
+                      sources=[{"version_id": v["version_id"], "doc_type": v["doc_type"],
+                                "period_label": v.get("period_label")} for v in versions])
+        return result
+
     def document_file(self, version_id: str) -> Path:
         v = self.store.query_one("SELECT content_hash FROM document_versions WHERE version_id=?", (version_id,))
         if not v:
@@ -189,6 +394,23 @@ class App:
         row["all_stages"] = STAGES
         return row
 
+    def saved_research(self, symbol: Optional[str] = None) -> Dict[str, Any]:
+        """Discover persisted generated results without submitting a research job."""
+        items = []
+        for row in self.store.query("SELECT job_id,state,result FROM jobs WHERE result IS NOT NULL AND state IN ('completed','partial') ORDER BY updated_at DESC,rowid DESC LIMIT 100"):
+            result = json.loads(row["result"])
+            company = result.get("company") or {}
+            if result.get("generation", {}).get("status") != "generated":
+                continue
+            if symbol and company.get("symbol") != symbol.strip().upper():
+                continue
+            items.append({"job_id": row["job_id"], "state": row["state"],
+                          "symbol": company.get("symbol"), "legal_name": company.get("legal_name"),
+                          "question": result.get("question"), "event_id": (result.get("event") or {}).get("announcement_id"),
+                          "mode": result.get("mode"), "generated_at": result.get("generated_at"),
+                          "document_count": len(result.get("eligible_version_ids") or [])})
+        return {"items": items}
+
     def run_job(self, job_id: str) -> None:
         row = self.store.query_one("SELECT * FROM jobs WHERE job_id=?", (job_id,))
         req = ResearchRequest(**json.loads(row["request"]))
@@ -252,8 +474,30 @@ class App:
 
     # ------------------------------------------------------------ portfolio queue (Push)
     def portfolio_queue(self, mode: str = "replay", price_move_pct: Optional[float] = None,
-                        volume_multiple: Optional[float] = None) -> Dict[str, Any]:
+                        volume_multiple: Optional[float] = None, window: str = "24h",
+                        filing_from: Optional[str] = None, filing_to: Optional[str] = None) -> Dict[str, Any]:
         cfg = self.replay if mode == "replay" else None
+        # Window controls filter the stored corpus; they never imply a live poll.
+        end = datetime.fromisoformat(cfg.cutoff_utc).astimezone(IST) if cfg else datetime.now(IST)
+        earliest = datetime.fromisoformat(cfg.filing_from + "T00:00:00+05:30") if cfg else None
+        if window == "custom":
+            try:
+                start = datetime.fromisoformat((filing_from or "") + "T00:00:00+05:30")
+                end = datetime.fromisoformat((filing_to or "") + "T23:59:59+05:30")
+            except ValueError:
+                raise ValueError("Choose both review dates in YYYY-MM-DD format.")
+            if start > end:
+                raise ValueError("The start date must be on or before the end date.")
+            if cfg and (start < earliest or end > datetime.fromisoformat(cfg.cutoff_utc)):
+                raise ValueError(f"Stored replay coverage is {cfg.filing_from} to {cfg.filing_to}; choose dates inside it.")
+        elif window in ("24h", "7d"):
+            start = end - timedelta(days=1 if window == "24h" else 7) + timedelta(seconds=1)
+            if earliest:
+                start = max(start, earliest)
+        elif window == "all":
+            start = earliest
+        else:
+            raise ValueError("Choose 24h, 7d, all or custom for the review period.")
         defaults = self.portfolio.get("anomaly_defaults", {})
         pmp = price_move_pct if price_move_pct is not None else float(defaults.get("price_move_pct", 5.0))
         vmul = volume_multiple if volume_multiple is not None else float(defaults.get("volume_multiple", 2.0))
@@ -270,15 +514,20 @@ class App:
                 continue
             cid = c.company_id
             anns = announcements_in_window(self.store, cid, cfg)
+            anns = [a for a in anns if a.get("published_at") and
+                    (start is None or datetime.fromisoformat(a["published_at"]) >= start) and
+                    datetime.fromisoformat(a["published_at"]) <= end]
             docs, _ = classify_versions(self.store, cid, mode, cfg.cutoff_utc if cfg else None)
             eod_q = "SELECT * FROM market_observations WHERE symbol=? AND series=?"
             params: tuple = (c.symbol, c.series)
             if cfg:
                 eod_q += " AND trading_date BETWEEN ? AND ?"
                 params += (cfg.raw["eod_window"]["from"], cfg.raw["eod_window"]["to"])
+            eod_q += " AND trading_date<=?"
+            params += (end.date().isoformat(),)
             eod = self.store.query(eod_q + " ORDER BY trading_date", params)
 
-            leading, notable, routine = [], [], 0
+            leading, notable, routine = [], [], []
             for a in anns:
                 cl = classify(a.get("category"), a.get("subject"), a.get("attachment_url"))
                 item = {"announcement_id": a["announcement_id"], "category": a.get("category"),
@@ -291,7 +540,7 @@ class App:
                 elif cl["tier"] == 2:
                     notable.append(item)
                 else:
-                    routine += 1
+                    routine.append(item)
             anomaly = eod_anomaly(eod, pmp, vmul, base, min_base) if eod else None
 
             has_data = bool(anns or eod or docs)
@@ -306,7 +555,7 @@ class App:
                 "coverage": {"identity": True, "announcements": len(anns), "eod": len(eod), "documents": len(docs)},
                 "leading_events": sorted(leading, key=lambda x: x.get("published_at") or "", reverse=True),
                 "notable_events": sorted(notable, key=lambda x: x.get("published_at") or "", reverse=True),
-                "routine_count": routine,
+                "routine_count": len(routine), "routine_events": routine,
                 "eod_anomaly": anomaly,
                 "can_research": bool(docs),
             })
@@ -315,12 +564,36 @@ class App:
         companies.sort(key=lambda c: (order.get(c["status"], 3), -len(c.get("leading_events", [])), c["symbol"]))
         return {
             "mode": mode, "replay": self.replay_info() if cfg else None,
+            "window": {"preset": window, "from": start.isoformat() if start else None, "to": end.isoformat(),
+                       "filing_from": start.date().isoformat() if start else None, "filing_to": end.date().isoformat(),
+                       "label": {"24h": "Last 24 hours of replay", "7d": "Last 7 days of replay", "all": "Full replay window", "custom": "Custom replay dates"}[window] if cfg else "Stored filing window",
+                       "stored_only": True},
             "thresholds": {"price_move_pct": pmp, "volume_multiple": vmul,
                            "baseline_sessions": base, "min_baseline_sessions": min_base},
             "summary": {"companies": len(companies), "checked": checked,
                         "with_events": with_events, "price_volume_flagged": flagged},
             "companies": companies,
         }
+
+    # ------------------------------------------------------------ live EOD (free Yahoo chart API)
+    def live_prices(self, price_move_pct: Optional[float] = None, volume_multiple: Optional[float] = None,
+                    symbols: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Optional live end-of-day snapshot for the portfolio via Yahoo's free chart API.
+
+        Deliberately separate from the verified replay: live rows are not written to the store.
+        Uses the same deterministic anomaly rule and the portfolio's default thresholds.
+        """
+        import httpx
+        from .sources.live_eod import live_market_snapshot
+        syms = symbols or self.portfolio.get("symbols", [])
+        defaults = self.portfolio.get("anomaly_defaults", {})
+        pmp = price_move_pct if price_move_pct is not None else float(defaults.get("price_move_pct", 5.0))
+        vmul = volume_multiple if volume_multiple is not None else float(defaults.get("volume_multiple", 2.0))
+        base = int(defaults.get("baseline_sessions", 20))
+        min_base = int(defaults.get("min_baseline_sessions", 5))
+        with httpx.Client() as client:
+            snap = live_market_snapshot(syms, client, pmp, vmul, base, min_base)
+        return snap
 
     # ------------------------------------------------------------ shaping
     @staticmethod

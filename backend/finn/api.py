@@ -27,6 +27,8 @@ def create_app(service: Optional[App] = None) -> FastAPI:
             if exc.state == "source_unavailable":
                 status = 503
             raise HTTPException(status_code=status, detail={"state": exc.state, "message": str(exc)})
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail={"state": "invalid_request", "message": str(exc)})
 
     @api.get("/api/health")
     def health():
@@ -44,6 +46,22 @@ def create_app(service: Optional[App] = None) -> FastAPI:
     def overview(symbol: str, mode: str = Query("replay", pattern="^(replay|live)$")):
         return wrap(svc.company_overview, symbol, mode)
 
+    @api.get("/api/companies/{symbol}/narrative")
+    def narrative(symbol: str, mode: str = Query("replay", pattern="^(replay|live)$")):
+        return wrap(svc.narrative_numbers, symbol, mode)
+
+    @api.get("/api/companies/{symbol}/quarterly")
+    def quarterly(symbol: str, mode: str = Query("replay", pattern="^(replay|live)$")):
+        return wrap(svc.quarterly_results, symbol, mode)
+
+    @api.post("/api/companies/{symbol}/quarterly/extract")
+    def extract_quarterly(symbol: str, mode: str = Query("replay", pattern="^(replay|live)$")):
+        return wrap(svc.quarterly_results, symbol, mode, allow_extract=True)
+
+    @api.get("/api/companies/{symbol}/management")
+    def management(symbol: str, mode: str = Query("replay", pattern="^(replay|live)$")):
+        return wrap(svc.management_changes, symbol, mode)
+
     @api.post("/api/research", status_code=202)
     def research(req: ResearchRequest):
         return wrap(svc.submit_research, req)
@@ -51,6 +69,10 @@ def create_app(service: Optional[App] = None) -> FastAPI:
     @api.get("/api/jobs/{job_id}")
     def job(job_id: str):
         return wrap(svc.job, job_id)
+
+    @api.get("/api/research/saved")
+    def saved_research(symbol: Optional[str] = None):
+        return svc.saved_research(symbol)
 
     @api.get("/api/evidence/{passage_id}")
     def evidence(passage_id: str):
@@ -70,12 +92,20 @@ def create_app(service: Optional[App] = None) -> FastAPI:
     @api.get("/api/portfolio")
     def portfolio(mode: str = Query("replay", pattern="^(replay|live)$"),
                   price_move_pct: Optional[float] = Query(None, ge=0, le=100),
-                  volume_multiple: Optional[float] = Query(None, ge=0, le=100)):
-        return svc.portfolio_queue(mode, price_move_pct, volume_multiple)
+                  volume_multiple: Optional[float] = Query(None, ge=0, le=100),
+                  window: str = Query("24h", pattern="^(24h|7d|all|custom)$"),
+                  filing_from: Optional[str] = None, filing_to: Optional[str] = None):
+        return wrap(svc.portfolio_queue, mode, price_move_pct, volume_multiple, window, filing_from, filing_to)
 
     @api.get("/api/coverage")
     def coverage():
         return svc.coverage()
+
+    @api.get("/api/live-prices")
+    def live_prices(price_move_pct: Optional[float] = Query(None, ge=0, le=100),
+                    volume_multiple: Optional[float] = Query(None, ge=0, le=100)):
+        # Optional free Yahoo EOD snapshot; separate from the verified replay corpus.
+        return wrap(svc.live_prices, price_move_pct, volume_multiple)
 
     dist = settings.frontend_dist
     if (dist / "index.html").exists():

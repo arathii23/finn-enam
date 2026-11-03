@@ -6,6 +6,8 @@ import json
 import sqlite3
 import sys
 
+from pathlib import Path
+
 from .config import get_settings
 from .db import Store
 
@@ -102,6 +104,37 @@ def cmd_discover(args) -> int:
     return 0 if all(st in ("completed", "already_covered") for st in statuses) else 2
 
 
+def cmd_export_static(args) -> int:
+    from .service import App
+    from .snapshot import export_static
+    s = get_settings()
+    if s.model_configured:
+        print("Refusing to export: unset OPENAI_API_KEY / ANTHROPIC_API_KEY so the snapshot is model-free.")
+        return 2
+    app = App(s, start_worker=False)
+    out = Path(args.out).resolve()
+    manifest = export_static(app, out)
+    print(json.dumps(manifest, indent=2, default=str))
+    print(f"static snapshot: {out}")
+    return 0
+
+
+def cmd_live_prices(args) -> int:
+    from .service import App
+    s = get_settings()
+    app = App(s, start_worker=False)
+    snap = app.live_prices(symbols=[x.upper() for x in args.symbols] or None)
+    for c in snap["companies"]:
+        if c.get("state") != "ok":
+            print(f"{c['symbol']:12s} {c.get('state')}: {c.get('error','')}")
+            continue
+        a = c.get("anomaly") or {}
+        flag = " ⚑ " + "; ".join(a.get("flags", [])) if a.get("flagged") else ""
+        print(f"{c['symbol']:12s} {c['latest']['trading_date']} close {c['latest']['close']} {c.get('currency','')}{flag}")
+    print(f"\n{snap['summary']['ok']}/{snap['summary']['companies']} live, {snap['summary']['flagged']} flagged — {snap['source']}")
+    return 0
+
+
 def cmd_serve(args) -> int:
     import uvicorn
     uvicorn.run("finn.api:get_app", factory=True, host=args.host, port=args.port, workers=1)
@@ -123,6 +156,13 @@ def main(argv=None) -> int:
     ver = sub.add_parser("verify", help="run M1 data checks on the ingested corpus")
     ver.add_argument("--symbol", default="INFY")
     ver.set_defaults(fn=cmd_verify)
+    exp = sub.add_parser("export-static", help="write a read-only static snapshot (no backend needed to view)")
+    exp.add_argument("--out", default=str((get_settings().frontend_dist.parent / "public" / "snapshot")),
+                     help="output directory (default: frontend/public/snapshot)")
+    exp.set_defaults(fn=cmd_export_static)
+    lp = sub.add_parser("live-prices", help="free live EOD snapshot via Yahoo (separate from replay)")
+    lp.add_argument("symbols", nargs="*", help="NSE symbols (default: portfolio)")
+    lp.set_defaults(fn=cmd_live_prices)
     srv = sub.add_parser("serve")
     srv.add_argument("--host", default="127.0.0.1")
     srv.add_argument("--port", type=int, default=8000)

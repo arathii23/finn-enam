@@ -21,6 +21,9 @@ PRICES_PER_MTOK = {
     "gpt-6.1-sol": (2.00, 10.00),
     "claude-haiku-5-5": (0.10, 0.50),
     "claude-sonnet-5-5": (2.00, 10.00),
+    # Google AI Studio free tier: no per-token charge (rate-limited, not metered).
+    "gemini-2.0-flash": (0.0, 0.0),
+    "gemini-2.5-flash": (0.0, 0.0),
 }
 # Anthropic rates checked against official pricing on 30 October 2026.
 # Requests are bounded below both providers' long-context pricing thresholds.
@@ -214,5 +217,75 @@ class AnthropicClient(ResponsesClient):
             return ModelResult("error", None, model, usage, error="output was not a JSON object")
 
 
+class GeminiClient(ResponsesClient):
+    """Google Gemini via its OpenAI-compatible Chat Completions endpoint.
+
+    The free Google AI Studio tier gives real synthesis at zero per-token cost (it is
+    rate-limited, not metered), so FINN can route on-demand research through a capable model
+    for free. A 429/5xx or an auth failure raises ModelUnavailable, and the caller falls
+    back to the deterministic keyless source brief — the app never hard-depends on it.
+    Docs: ai.google.dev/gemini-api/docs/openai (OpenAI compatibility).
+    """
+
+    def generate(self, *, job_id: Optional[str], model: str, effort: str, system: str, user: str,
+                 schema: Dict[str, Any], schema_name: str, max_output_tokens: int = 2500) -> ModelResult:
+        if not self.settings.gemini_api_key:
+            raise ModelUnavailable("GEMINI_API_KEY is not configured on the server")
+        if not model.startswith("gemini-"):
+            raise ModelUnavailable("selected model does not belong to the Gemini provider")
+        in_tokens = estimate_tokens(system) + estimate_tokens(user) + estimate_tokens(json.dumps(schema)) + 1024
+        if in_tokens > 24000:
+            return ModelResult("error", None, model, error=f"input estimate {in_tokens} tokens exceeds 24,000 budget")
+        call_id = self.ledger.reserve(job_id, model, in_tokens, max_output_tokens)
+        body = {
+            "model": model,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "response_format": {"type": "json_schema",
+                                "json_schema": {"name": schema_name, "schema": schema, "strict": True}},
+            "max_tokens": max_output_tokens,
+            "temperature": 0,
+        }
+        try:
+            resp = self.http.post(f"{self.settings.gemini_base_url}/chat/completions", json=body,
+                                  headers={"Authorization": f"Bearer {self.settings.gemini_api_key}"})
+        except httpx.HTTPError as exc:
+            self.ledger.reconcile(call_id, model, {}, "transport_error")
+            return ModelResult("error", None, model, error=f"transport error: {exc.__class__.__name__}")
+        if resp.status_code != 200:
+            self.ledger.reconcile(call_id, model, {}, f"http_{resp.status_code}")
+            # Rate limit, auth and access failures are not malformed answers; degrade to keyless.
+            raise ModelUnavailable(f"Gemini API returned HTTP {resp.status_code}; check the free-tier key, model access and rate limit")
+        try:
+            payload = resp.json()
+        except ValueError:
+            self.ledger.reconcile(call_id, model, {}, "invalid_response")
+            return ModelResult("error", None, model, error="provider returned invalid JSON")
+        u = payload.get("usage") or {}
+        usage_norm = {"input_tokens": u.get("prompt_tokens"), "output_tokens": u.get("completion_tokens")}
+        cost = self.ledger.reconcile(call_id, model, usage_norm, payload.get("choices", [{}])[0].get("finish_reason", "unknown"))
+        usage = {"input_tokens": u.get("prompt_tokens"), "output_tokens": u.get("completion_tokens"),
+                 "cost_usd_list_price": round(cost, 6), "provider": "gemini"}
+        choices = payload.get("choices") or []
+        if not choices:
+            return ModelResult("error", None, model, usage, error="no choices in response")
+        choice = choices[0]
+        if choice.get("finish_reason") == "length":
+            return ModelResult("incomplete", None, model, usage, error="incomplete: max tokens reached")
+        content = (choice.get("message") or {}).get("content")
+        if not content:
+            return ModelResult("refused", None, model, usage, error="model returned empty content")
+        try:
+            data = json.loads(content)
+            if not isinstance(data, dict):
+                raise ValueError("expected an object")
+            return ModelResult("completed", data, model, usage)
+        except ValueError:
+            return ModelResult("error", None, model, usage, error="output was not a JSON object")
+
+
 def create_model_client(settings: Settings, store: Store) -> ResponsesClient:
-    return AnthropicClient(settings, store) if settings.model_provider == "anthropic" else ResponsesClient(settings, store)
+    if settings.model_provider == "anthropic":
+        return AnthropicClient(settings, store)
+    if settings.model_provider == "gemini":
+        return GeminiClient(settings, store)
+    return ResponsesClient(settings, store)

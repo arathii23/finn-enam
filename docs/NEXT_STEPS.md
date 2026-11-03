@@ -1,5 +1,10 @@
 # FINN — next steps and evaluation continuity
 
+> Historical planning note from 30 October. For the current 31 October state, use the latest
+> `BUILD_STATUS.md` entry and `docs/SUBMISSION_CHECKLIST.md`. The subsequent ten-packet evaluation
+> is recorded in `docs/MODEL_EVALUATION.md`; portfolio ingestion, M2, M3 and the M4 local pass
+> have since been completed. Hosting, physical-phone and fresh-ticker continuity gates remain.
+
 30 October 2026 (IST). Submission deadline supplied by the brief: 1 November 2026. Evaluation timing and the exact credit-expiry timestamp are unknown. The user's API credits expire in two days; this is user-reported, not an independently inspected billing balance.
 
 ## Immediate issue: fixed locally

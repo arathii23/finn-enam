@@ -18,7 +18,7 @@ _DESC_RULES: List[tuple] = [
     (r"outcome of board meeting", ("results", TIER_LEADING, "Board meeting outcome")),
     (r"financial result|clarification - financial|integrated filing- financial", ("results", TIER_LEADING, "Financial results")),
     (r"scheme of arrangement|amalgamation|\bmerger\b|demerger|acquisition|takeover|slump sale", ("M&A", TIER_LEADING, "M&A / restructuring")),
-    (r"change in management|change in director|change in key managerial|resignation|cessation|appointment", ("management_change", TIER_LEADING, "Management / board change")),
+    (r"change in management|change in director|change in key managerial", ("management_change", TIER_LEADING, "Management / board change")),
     (r"fund rais|preferential|qualified institutional|\bqip\b|rights issue|\bbuyback\b|allotment of securities|commercial paper|non.?convertible", ("fund_raise", TIER_LEADING, "Fund raising / allotment")),
     (r"credit rating|rating action", ("credit_rating", TIER_LEADING, "Credit rating")),
     (r"order(s)? passed|penalty|litigation|insolvency|regulatory action|action\(s\) taken", ("litigation", TIER_LEADING, "Litigation / regulatory order")),
@@ -37,10 +37,15 @@ _DESC_RULES: List[tuple] = [
 # Subject/attachment keyword refinements that can UPGRADE a generic label.
 _REFINE_RULES: List[tuple] = [
     (r"transcript", ("earnings_call", TIER_NOTABLE, "Earnings-call transcript")),
-    (r"earnings|investor release|investor presentation|result", ("results", TIER_LEADING, "Results-related filing")),
+    (r"conference call|earnings call|con\.\s*call", ("earnings_call", TIER_NOTABLE, "Earnings-call notice / recording")),
+    (r"investor release|result", ("results", TIER_LEADING, "Results-related filing")),
     (r"acqui|merger|amalgamation|scheme of arrangement|stake", ("M&A", TIER_LEADING, "M&A / restructuring")),
-    (r"resign|appoint|cessation|director|cfo|ceo|managing director", ("management_change", TIER_LEADING, "Management / board change")),
 ]
+_PERSONNEL_ACTION = re.compile(r"appoint|resign|cessation|retir|removal|change in (?:management|director|key managerial)", re.I)
+_LEADERSHIP = re.compile(r"\b(?:ceo|cfo|coo|director|chief|president|group head|senior management|key managerial|company secretary)\b", re.I)
+_AUDITOR = re.compile(r"auditor|\bm/s\b|company secretaries", re.I)
+_STRICT_ROUTINE_DESC = re.compile(r"newspaper|loss of share|duplicate share|esop|esos|esps|trading window|certificate under sebi|depositories and participants|reconciliation|voting results|scrutinizer", re.I)
+_PERSONAL_DISCLOSURE = re.compile(r"disclosure under.{0,100}(?:substantial acquisition|takeover)|\bsast\b", re.I)
 _ROUTINE_HINT = re.compile(
     r"newspaper|loss of share|duplicate share|esop|esos|esps|trading window|certificate under sebi|"
     r"depositories and participants|general updates|compliance|reconciliation|voting results|scrutinizer", re.I)
@@ -49,6 +54,7 @@ _ROUTINE_HINT = re.compile(
 def classify(category: Optional[str], subject: Optional[str] = None, attachment_url: Optional[str] = None) -> Dict[str, Any]:
     desc = (category or "").lower()
     hay = " ".join(x for x in (subject or "", attachment_url or "") if x).lower()
+    personnel = " ".join((desc, subject or ""))
     ref, tier, reason = "unclassified", TIER_ROUTINE, "Routine / compliance"
 
     for pat, (r, t, why) in _DESC_RULES:
@@ -61,11 +67,31 @@ def classify(category: Optional[str], subject: Optional[str] = None, attachment_
             ref, tier, reason = "unclassified", TIER_ROUTINE, "Routine / compliance"
 
     # Refinement can upgrade (to a stronger tier) a generic or weaker classification.
-    for pat, (r, t, why) in _REFINE_RULES:
-        if re.search(pat, hay):
-            if t < tier:
-                ref, tier, reason = r, t, why
-            break
+    if not _STRICT_ROUTINE_DESC.search(desc) and ref in ("unclassified", "press_release"):
+        for pat, (r, t, why) in _REFINE_RULES:
+            if re.search(pat, hay):
+                if t < tier:
+                    ref, tier, reason = r, t, why
+                break
+
+    # Statutory personal-shareholding disclosure text contains the words
+    # "Substantial Acquisition ... Takeovers"; that title is not a company M&A event.
+    if _PERSONAL_DISCLOSURE.search(personnel) and re.search(r"disclosure|submitted.{0,50}exchange", personnel, re.I):
+        ref, tier, reason = "insider_trading", TIER_NOTABLE, "Personal shareholding disclosure"
+
+    # A mention of the board/directors is not itself a personnel change (e.g.
+    # a dividend recommendation). Auditor appointments remain routine paperwork.
+    management = bool(_PERSONNEL_ACTION.search(personnel) and _LEADERSHIP.search(personnel))
+    if _AUDITOR.search(personnel):
+        management = bool(re.search(r"(?:appoint|resign|cessation|retir|removal).{0,100}(?:chief|\bceo\b|\bcfo\b|managing director|senior management)", personnel, re.I))
+    if management and tier > TIER_LEADING:
+        ref, tier, reason = "management_change", TIER_LEADING, "Management / board change"
+    elif (_AUDITOR.search(personnel) and not management and ref in ("unclassified", "management_change", "results")
+          and not re.search(r"financial result|outcome of board meeting", desc)):
+        ref, tier, reason = "unclassified", TIER_ROUTINE, "Auditor / routine appointment"
+
+    if _STRICT_ROUTINE_DESC.search(desc):
+        ref, tier, reason = "unclassified", TIER_ROUTINE, "Routine / compliance"
 
     # A clearly routine subject never gets promoted above routine on desc alone.
     if tier == TIER_ROUTINE and _ROUTINE_HINT.search(hay) and not any(re.search(p, hay) for p, _ in _REFINE_RULES):

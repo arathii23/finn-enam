@@ -169,3 +169,94 @@ def test_valid_nse_symbols_with_ampersands_remain_one_query_value(env):
     _, _, f, _ = env; c = company(env, f).model_copy(update={"symbol": "TEST&CO"})
     res, _ = nse.fetch_annual_report_index(f, c)
     assert parse_qs(urlparse(res.url).query)["symbol"] == ["TEST&CO"]
+
+
+def test_archive_index_entries_do_not_starve_a_newer_agm_annual_pdf(env):
+    settings, store, _, net = env
+    annual_url = f"{BASE}/corporate/TESTCO_AnnualReport_2023_24.pdf"
+    old_pdf_url = f"{BASE}/corporate/TESTCO_annual_2019.pdf"
+    numbers = "Assets and liabilities 100 200 300 400 500 600 700 800 900 1000 1100 1200"
+    net.pdfs[annual_url] = make_pdf([
+        "Testco Industries Limited\nAnnual Report 2023-24",
+        "Principal business activities: manufacturing pumps and valves.",
+        "Standalone Balance Sheet as at March 31, 2024\n" + numbers,
+        "Standalone Statement of Profit and Loss\n" + numbers,
+    ] + [f"Corporate governance and financial notes page {i}" for i in range(16)])
+    zips = [{"companyName": "Testco Industries Limited", "fromYr": str(year), "toYr": str(year + 1),
+             "submission_date": f"03-Jun-{year+1}", "fileName": f"{BASE}/corporate/TESTCO_{year}.zip"}
+            for year in (2018, 2019, 2020)]
+    index = {"data": zips + [{"companyName": "Testco Industries Limited", "fromYr": "2018", "toYr": "2019",
+                              "submission_date": "03-Jun-2019", "fileName": old_pdf_url}]}
+    # The subject supplies no annual-report label. The filename is only a cue;
+    # exact dated listing and substantive PDF contents must both be verified.
+    record = {"symbol": "TESTCO", "desc": "Shareholders meeting", "attchmntText": "Notice of Annual General Meeting",
+              "exchdisstime": "31-May-2024 15:36:21", "attchmntFile": annual_url}
+    f = network(env, index, ANN_APRIL + [record]); c = company(env, f)
+    report = discover_company_sources(store, f, settings, c, CUTOFF)
+    assert report["state"] == "completed"
+    assert len(report["skipped_candidates"]) == 3
+    assert all("No download attempt used" in item["reason"] for item in report["skipped_candidates"])
+    assert not any(url.endswith(".zip") or url == old_pdf_url for url in net.calls)
+    ar = store.query_one("SELECT * FROM document_versions WHERE doc_type='annual_report'")
+    assert ar["source_url"] == annual_url and ar["published_at"] == "2024-05-31T10:06:21+00:00"
+    ident = json.loads(ar["identification"])
+    assert ident["annual_report_body_verified"] and ident["identity_ok"]
+    proof = json.loads(ar["availability_evidence"])[0]
+    assert proof["method"] == "exchange_announcement"
+    assert proof["matched_record"]["attchmntFile"] == annual_url
+    assert len([d for d in report["documents"] if d["doc_type"] == "annual_report"]) == 1
+    assert len([q for q in report["queries"] if q["source"] == "announcements"]) <= 4
+    assert not store.query("SELECT * FROM model_calls")
+
+
+def test_filename_only_annual_report_cue_rejects_short_agm_intimation(env):
+    settings, store, _, net = env
+    url = f"{BASE}/corporate/TESTCO_AnnualReport_AGM.pdf"
+    net.pdfs[url] = make_pdf(["Testco Industries Limited\nSub: Annual Report 2023-24 and Annual General Meeting\n"
+                              "The annual report will be sent separately. Please note the AGM date."])
+    rec = {"symbol": "TESTCO", "desc": "Shareholders meeting", "attchmntText": "AGM intimation",
+           "exchdisstime": "31-May-2024 15:36:21", "attchmntFile": url}
+    f = network(env, {"data": []}, ANN_APRIL + [rec]); c = company(env, f)
+    report = discover_company_sources(store, f, settings, c, CUTOFF)
+    assert report["state"] == "partial"
+    assert any("lacks substantive financial-statement pages" in issue for issue in report["issues"])
+    eligible, _ = classify_versions(store, c.company_id, "replay", CUTOFF)
+    assert all(v["doc_type"] != "annual_report" for v in eligible)
+    ar = store.query_one("SELECT identification FROM document_versions WHERE source_url=?", (url,))
+    assert json.loads(ar["identification"])["annual_report_body_verified"] is False
+
+
+def test_filename_only_annual_report_cue_rejects_long_nonfinancial_attachment(env):
+    settings, store, _, net = env
+    url = f"{BASE}/corporate/TESTCO_AnnualReport_BRSR.pdf"
+    net.pdfs[url] = make_pdf(["Testco Industries Limited\nAnnual Report 2023-24\nBusiness Responsibility and Sustainability Report"] +
+        [f"Sustainability disclosures and environmental initiatives page {i}" for i in range(25)])
+    rec = {"symbol": "TESTCO", "desc": "Shareholders meeting", "exchdisstime": "31-May-2024 15:36:21", "attchmntFile": url}
+    f = network(env, {"data": []}, ANN_APRIL + [rec]); c = company(env, f)
+    report = discover_company_sources(store, f, settings, c, CUTOFF)
+    assert report["state"] == "partial"
+    eligible, _ = classify_versions(store, c.company_id, "replay", CUTOFF)
+    assert all(v["doc_type"] != "annual_report" for v in eligible)
+
+
+def test_annual_report_filename_does_not_supply_publication_proof(env):
+    settings, store, _, net = env
+    url = f"{BASE}/corporate/TESTCO_AnnualReport_20240531.pdf"
+    undated = {"symbol": "TESTCO", "desc": "Shareholders meeting", "attchmntFile": url}
+    f = network(env, {"data": []}, ANN_APRIL + [undated]); c = company(env, f)
+    report = discover_company_sources(store, f, settings, c, CUTOFF)
+    assert report["state"] == "partial" and url not in net.calls
+    assert not store.query("SELECT * FROM document_versions WHERE source_url=?", (url,))
+
+
+def test_brsr_reference_to_annual_report_is_not_a_complete_annual_report(env):
+    settings, store, _, net = env
+    url = f"{BASE}/corporate/TESTCO_BRSR.pdf"
+    net.pdfs[url] = make_pdf(["Testco Industries Limited\nBusiness Responsibility and Sustainability Report\nForms part of the Annual Report 2023-24"] +
+                           [f"Environmental and workforce disclosures for page {i}" for i in range(25)])
+    rec = {"symbol": "TESTCO", "desc": "Updates", "attchmntText": "Business Responsibility and Sustainability Report (BRSR), which forms an integral part of the Integrated Annual Report",
+           "exchdisstime": "31-May-2024 15:36:21", "attchmntFile": url}
+    f = network(env, {"data": []}, ANN_APRIL + [rec]); c = company(env, f)
+    report = discover_company_sources(store, f, settings, c, CUTOFF)
+    assert report["state"] == "partial"
+    assert all(v['doc_type'] != 'annual_report' for v in classify_versions(store, c.company_id, 'replay', CUTOFF)[0])
