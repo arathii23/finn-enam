@@ -1,0 +1,41 @@
+name: Refresh live prices
+
+# Free, serverless live data: a scheduled job fetches Yahoo EOD and publishes live_prices.json
+# to the `live-data` branch (force-pushed as a single commit, so history stays tiny and GitHub
+# Pages is never rebuilt). The static site fetches it cross-origin from raw.githubusercontent.com
+# and shows "last updated". GitHub's scheduler may run every ~5-15 min under load.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-prices
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch live prices (stdlib only)
+        run: python scripts/refresh_live_prices.py --out live_prices.json
+      - name: Publish to live-data branch
+        run: |
+          set -euo pipefail
+          mkdir -p _pub && cp live_prices.json _pub/live_prices.json
+          cd _pub
+          git init -q
+          git checkout -q -b live-data
+          git config user.name "finn-live-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add live_prices.json
+          git commit -q -m "live prices $(date -u +%FT%TZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" live-data

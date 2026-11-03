@@ -243,8 +243,14 @@ const staticApi: typeof liveApi = {
     const w = opts?.window && ["24h", "7d", "all"].includes(opts.window) ? opts.window : "24h";
     return snap<PortfolioQueue>(`portfolio_${w}.json`, true);
   },
-  livePrices: (() => Promise.reject(new ApiError(0, "static_mode",
-    "Live prices come from the live backend (free Yahoo EOD). This static snapshot shows the stored replay."))) as typeof liveApi.livePrices,
+  livePrices: ((() => {
+    const url = import.meta.env.VITE_LIVE_PRICES_URL;
+    if (!url) return Promise.reject(new ApiError(0, "static_mode", "Live prices are not configured for this build."));
+    // Cache-bust lightly so a viewer sees fresh data within the scheduler's cadence.
+    return fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Math.floor(Date.now() / 60000)}`)
+      .then((r) => { if (!r.ok) throw new ApiError(r.status, "live_feed", r.status === 404 ? "The live feed is initialising — the scheduled refresh runs every few minutes." : `Live feed HTTP ${r.status}`); return r.json() as Promise<LivePrices>; })
+      .catch((e) => { if (e instanceof ApiError) throw e; throw new ApiError(0, "network", "The live price feed could not be reached."); });
+  })) as typeof liveApi.livePrices,
   fileUrl: (versionId: string, page?: number) => {
     const d = docsCache?.[versionId];
     const url = d?.final_url || d?.source_url;
