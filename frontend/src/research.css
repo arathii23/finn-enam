@@ -18,12 +18,10 @@
 .eod-table th, .eod-table td { text-align: right; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); }
 .eod-table th:first-child, .eod-table td:first-child { text-align: left; font-weight: 600; }
 .eod-table tbody tr.flagged-row { background: #fff7e6; }
-@media (prefers-color-scheme: dark) { .eod-table tbody tr.flagged-row { background: #2b2415; } }
 
 .share-btn { margin-left: auto; align-self: center; min-height: 36px; padding: 0.35rem 0.85rem; border: 1px solid rgba(255,255,255,0.35); border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .share-btn:hover { border-color: rgba(255,255,255,0.7); }
 .snapshot-note { margin: 0; padding: 0.5rem 1rem; background: #fff7e6; color: #7a4f00; border-bottom: 1px solid #f0d9a8; font-size: 0.82rem; line-height: 1.4; }
-@media (prefers-color-scheme: dark) { .snapshot-note { background: #2b2415; color: #e8c77a; border-bottom-color: #4a3d1f; } }
 
 /* Keyless extractive brief: verbatim quotes with citation. */
 .brief-quotes { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.85rem; }
