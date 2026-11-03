@@ -51,9 +51,13 @@ def estimate_tokens(text: str) -> int:
 
 
 def model_prices(model: str):
-    if model not in PRICES_PER_MTOK:
-        raise ModelUnavailable("model has no configured price; add a verified rate before making calls")
-    return PRICES_PER_MTOK[model]
+    if model in PRICES_PER_MTOK:
+        return PRICES_PER_MTOK[model]
+    # Any Gemini model is used only on the free tier (no per-token charge); this keeps the
+    # app working across Gemini model-name changes without editing a price table.
+    if model.startswith("gemini-"):
+        return (0.0, 0.0)
+    raise ModelUnavailable("model has no configured price; add a verified rate before making calls")
 
 
 class Ledger:
@@ -227,12 +231,44 @@ class GeminiClient(ResponsesClient):
     Docs: ai.google.dev/gemini-api/docs/openai (OpenAI compatibility).
     """
 
+    _resolved_model: Optional[str] = None  # cached per-process after discovery
+
+    def _resolve_model(self, requested: str) -> str:
+        """Return a model the key can actually use. Gemini's free-tier model names change over
+        time, so if the requested one isn't listed we discover an available flash model instead of
+        hard-failing with a 404. Result is cached for the process."""
+        if type(self)._resolved_model:
+            return type(self)._resolved_model
+        chosen = requested
+        try:
+            resp = self.http.get(f"{self.settings.gemini_base_url}/models",
+                                 headers={"Authorization": f"Bearer {self.settings.gemini_api_key}"},
+                                 timeout=httpx.Timeout(20.0, connect=8.0))
+            if resp.status_code == 200:
+                ids = []
+                for m in (resp.json().get("data") or []):
+                    mid = (m.get("id") or "").split("/")[-1]  # strip any "models/" prefix
+                    if mid.startswith("gemini-"):
+                        ids.append(mid)
+                if ids and requested not in ids:
+                    skip = ("embedding", "tts", "image", "vision", "audio", "live")
+                    prefs = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]
+                    chosen = (next((p for p in prefs if p in ids), None)
+                              or next((m for m in ids if "flash" in m and not any(s in m for s in skip)), None)
+                              or next((m for m in ids if not any(s in m for s in skip)), None)
+                              or ids[0])
+        except httpx.HTTPError:
+            pass  # keep the requested model; a real failure surfaces on the generate call
+        type(self)._resolved_model = chosen
+        return chosen
+
     def generate(self, *, job_id: Optional[str], model: str, effort: str, system: str, user: str,
                  schema: Dict[str, Any], schema_name: str, max_output_tokens: int = 2500) -> ModelResult:
         if not self.settings.gemini_api_key:
             raise ModelUnavailable("GEMINI_API_KEY is not configured on the server")
         if not model.startswith("gemini-"):
             raise ModelUnavailable("selected model does not belong to the Gemini provider")
+        model = self._resolve_model(model)
         in_tokens = estimate_tokens(system) + estimate_tokens(user) + estimate_tokens(json.dumps(schema)) + 1024
         if in_tokens > 24000:
             return ModelResult("error", None, model, error=f"input estimate {in_tokens} tokens exceeds 24,000 budget")
