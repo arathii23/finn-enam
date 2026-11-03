@@ -154,6 +154,32 @@ class Gap(BaseModel):
     evidence_ids: List[str] = Field(default_factory=list)
 
 
+class BriefItem(BaseModel):
+    """One verbatim extract selected from a primary-source passage. No model wrote it."""
+    kind: Literal["business_context", "management_commentary", "event_filing"]
+    quote: str
+    speaker: Optional[str] = None
+    doc_type: str
+    period_label: Optional[str] = None
+    evidence_id: str
+    page_index: int
+
+
+class SourceBrief(BaseModel):
+    """A query-aware extractive brief built without any model call.
+
+    Highlights are exact sentences lifted from eligible primary sources and ranked by
+    keyword relevance. Numbers are quoted, never computed; nothing is written from memory.
+    """
+    status: Literal["extractive", "empty"]
+    headline: Optional[str] = None
+    method: str = ("Verbatim extracts selected from eligible primary sources by keyword relevance. "
+                   "No model generated this text; figures are quoted, not computed or compared.")
+    query_terms: List[str] = Field(default_factory=list)
+    highlights: List[BriefItem] = Field(default_factory=list)
+    suggested_questions: List[str] = Field(default_factory=list)
+
+
 class FollowUp(BaseModel):
     status: Literal["generated", "model_unavailable", "failed"]
     text: Optional[str] = None
@@ -189,3 +215,4 @@ class ResearchOutput(BaseModel):
     removed_claims: List[Dict[str, Any]] = Field(default_factory=list)
     evidence_index: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     discovery: Dict[str, Any] = Field(default_factory=dict)
+    source_brief: Optional[SourceBrief] = None

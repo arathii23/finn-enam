@@ -396,7 +396,9 @@ def ingest_document(store: Store, fetcher: Fetcher, company: Company, spec: Dict
             published_at, precision = existing["published_at"], existing["published_precision"]
             evidence = [AvailabilityEvidence(**e) for e in json.loads(existing["availability_evidence"])]
 
-    if existing and existing["parser_version"] == PARSER_VERSION and existing["doc_type"] == doc_type:
+    if (existing and existing["parser_version"] == PARSER_VERSION and existing["doc_type"] == doc_type
+            and (not spec.get("_annual_filename_cue") or
+                 json.loads(existing["identification"]).get("annual_report_body_verified"))):
         # Same bytes already extracted; refresh availability evidence only.
         store.execute(
             "UPDATE document_versions SET published_at=?, published_precision=?, availability_status=?, availability_evidence=? WHERE version_id=?",
@@ -425,6 +427,27 @@ def ingest_document(store: Store, fetcher: Fetcher, company: Company, spec: Dict
             same = spec["period_label"] == period_info["period_label"]
             ident["index_period_matches_header"] = same
             ident["identity_ok"] = ident["identity_ok"] and same
+    if spec.get("_annual_filename_cue") and doc_type == "annual_report":
+        # An AGM/BRSR attachment may mention "annual report" and the issuer on
+        # its cover. Indirect title/filename cues need substantive financial
+        # statements, rather than allowing the mention to establish the type.
+        sections = {}
+        headings = {
+            "balance_sheet": r"(?im)^\s*(?:(?:standalone|consolidated)\s+)?balance\s+sheet\b",
+            "profit_and_loss": r"(?im)^\s*(?:(?:standalone|consolidated)\s+)?statement\s+of\s+profit\s+(?:and|&)\s+loss\b",
+            "cash_flows": r"(?im)^\s*(?:(?:standalone|consolidated)\s+)?(?:statement\s+of\s+cash\s+flows?|cash\s+flow\s+statement)\b",
+        }
+        for i, page in enumerate(pages[2:], start=3):
+            if len(re.findall(r"\b\d[\d,.]*\b", page)) < 10:
+                continue
+            for kind, pattern in headings.items():
+                if re.search(pattern, page):
+                    sections.setdefault(kind, []).append(i)
+        financial_pages = {i for indexes in sections.values() for i in indexes}
+        body_ok = total_pages >= 20 and len(sections) >= 2 and len(financial_pages) >= 2
+        ident["annual_report_body_verified"] = body_ok
+        ident["annual_report_financial_sections"] = sections
+        ident["identity_ok"] = ident["identity_ok"] and body_ok
     known_speakers, management_speakers = transcript_speakers(pages) if doc_type == "earnings_call_transcript" else (set(), set())
     if spec.get("_discovered") and doc_type == "earnings_call_transcript":
         content = "\n".join(pages)

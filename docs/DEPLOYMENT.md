@@ -1,8 +1,19 @@
 # Deployment plan (for approval — NOT yet executed)
 
+> 3 November 2026: the user now requires deployment **without a model API key**. Read the current
+> [Claude Code handoff](HANDOFF_CLAUDE_CODE.md) before using this historical proposal. Its API-funding
+> steps are superseded, the blueprint still needs a keyless update, and the prices below require a
+> fresh quote. A paid service plus persistent storage remains the proposed live architecture;
+> hosting, static fallback, real-phone access and hosted persistence are unverified and unapproved.
+
 No hosting has been provisioned, nothing is published, no card is on file. This document is the
 concrete plan and cost so you can approve before anything is created. Prices checked on
 render.com/pricing and Render docs, 31 October 2026 — confirm at purchase time.
+
+Local readiness update, 31 October: 86 backend tests and the official frontend build pass;
+seven real-app views were checked at 360/390/430 CSS px. This does not verify the container,
+hosted source access, persistent disk or a physical phone. `render.yaml` is still only a proposal;
+its model/caps now match local settings (Sonnet low effort, escalation off, $5/$0.25).
 
 ## Architecture fit
 
@@ -17,7 +28,7 @@ object store needed. `Dockerfile` and `render.yaml` are already in the repo.
 |---|---|---|
 | Workspace | Hobby | $0 (flat Pro $25 only if you want unlimited seats — not needed) |
 | Web service | **Starter** — 0.5 vCPU, 512 MB, always-on, can attach a disk | **$7.00** |
-| Persistent disk | 2 GB SSD at $0.25/GB (data dir is ~85 MB for 3 companies; 2 GB covers all 15 with headroom) | **$0.50** |
+| Persistent disk | 2 GB SSD at $0.25/GB (local data dir measured 409 MB after all 15 holdings) | **$0.50** |
 | Bandwidth | demo traffic is well within the included allowance; overage $0.15/GB | ~$0 |
 | **Baseline total** | | **≈ $7.50 / month** |
 

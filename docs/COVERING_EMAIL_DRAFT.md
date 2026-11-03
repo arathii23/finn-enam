@@ -1,49 +1,57 @@
-# Covering email — draft (not sent)
+# Covering email — review draft, not sent
 
-To: assessment@enam.com
+Recipient: assessment@enam.com
 Subject: ENAM - IIT screening - 2027
 
-**Do not send automatically.** Fill the [bracketed] items (deployed link, repo link, AI-history
-share links), confirm the phone test, then send manually.
+Replace the bracketed links, verify reviewer access and the physical-phone test, and obtain final
+approval before sending. This draft describes the implemented scope; it does not claim deployment.
 
 ---
 
 Hi team,
 
-Attached / linked is FINN, my take on the mobile investor intelligence layer.
+I built FINN around two questions an investor returns to: **what changed across my holdings, and
+what do the company's own sources establish?**
 
-**What I built.** FINN is a mobile-first, primary-source research product with the two hero workflows
-from the brief:
-- **Review (Push):** a prioritised digest across a 15-company NSE portfolio. Each corporate filing is
-  classified into leading / notable / routine tiers by an explainable rule set (mapped to your reference
-  categories), with routine compliance collapsed and generic "Updates" filings re-classified from their
-  subject/attachment so a results filing or transcript is never buried. End-of-day price/volume anomaly
-  flags are configurable (my move-% and volume-× thresholds), raw/unadjusted, and never attributed to a
-  filing as cause.
-- **Research (Pull):** on-demand, grounded strictly in primary sources (annual reports + concall
-  transcripts + exchange filings). Business context, management commentary, explicit evidence gaps and one
-  follow-up question — every factual claim resolves to a cited passage you can open at the exact PDF page.
+**Review** covers a mixed 15-company NSE portfolio. A selectable historical period, company/type
+filters, explainable attention tiers and configurable EOD flags help narrow the feed. Routine
+filings stay accessible. The original exchange description and attachment are available beside
+each event; a price move is never attributed to a filing as its cause.
 
-**Key decisions and trade-offs.**
-- Primary-source discipline is enforced in code, not just prompted: generated claims are dropped unless
-  every cited id is in the evidence packet, numbers appear verbatim in the cited text, the reporting basis
-  (standalone/consolidated) is preserved, and the speaker/period match the source. Nothing is filled from
-  the model's own knowledge.
-- Historical replay with a fixed publication cutoff (30 Apr 2025), so a document is only used if it was
-  provably public by then — the demo is reproducible and leak-free. A separate path researches any NSE
-  ticker where data is available (build-to-generalise, not hard-wired to the demo set).
-- Model routing for cost: cheap extraction-grade model evaluated against a stronger one on labelled
-  packets; the stronger model (Sonnet, low effort) was retained only where source-level review justified
-  it. A cost ledger reserves budget before each call and fails closed at the cap. Total application spend
-  to date is well under $1.
-- Deliberately left out: automated beat/miss or credibility verdicts (shown to be unsafe without stronger
-  comparability gates), live intraday data, and features that would be broad-but-brittle.
+**Research** lets the user open a saved brief or ask a focused company/event question. Three
+prepared examples span IT services, banking and building products. Answers use annual reports,
+call transcripts and exchange filings, with exact passages, PDF pages, source dates and explicit
+evidence gaps. The demo is labelled as a replay with a 30 April 2025 evidence cutoff.
 
-**What I'd do next.** Ingest the full portfolio and add 3–5 more verified research demos; a triggered-alert
-channel on top of the EOD checks; printed-page locators; and the numbers-vs-narrative guidance tracker once
-its comparability gates pass independent review.
+Two focused analytical views complement the briefs: management guidance versus the disclosed
+outcome, with metric/period/currency/entity checks and visible qualifications; and quarterly
+headline figures with prior values and calculated QoQ/YoY changes. Unsupported numbers—including
+EBITDA when not explicitly disclosed—are omitted. Appointment profiles quote the primary filing,
+with separate evidence for the appointment and background.
 
-**How to try it.** [deployed phone link]. Repo: [GitHub link]. AI build history: [share links].
+On cost and model choice: FINN is **free to run and free to evaluate**. The default build uses no
+model at all — deterministic code handles prioritisation, arithmetic, appointment parsing and a
+query-aware **verbatim source brief** that quotes and cites the most relevant primary-source
+sentences for a fresh question (figures quoted, never computed). For genuine AI synthesis the app
+routes through Google Gemini's **free tier** (zero per-token cost) behind the same citation/number/
+speaker validation; a rate limit degrades gracefully back to the keyless brief. This is deliberate
+model routing — cheap/free where it suffices, with paid providers selectable but never required.
+Saved results read without any model call, and the earlier development ledger stayed under $1.
 
-Thanks for a genuinely interesting problem.
+I deliberately left out intraday feeds, notification delivery, investment recommendations and an
+exhaustive financial-analysis suite. The guidance comparison uses available annual disclosures,
+not a claimed complete four-quarter promise history. Automated source checks do not establish
+universal model accuracy; selected results were also inspected against their sources.
+
+Next I would broaden issuer/layout coverage, validate the workflow with investors, and add a
+monitored notification channel with production retrieval and persistence checks.
+
+Prototype (open on a phone — no install, no login): [static HTTPS link + QR]
+  A read-only snapshot on a free CDN that never sleeps: full digest, saved briefs, quarterly,
+  management, narrative and primary-source evidence. On-demand research runs on the optional
+  live backend (keyless, or free Gemini); [live link if deployed, else "run locally — see README"].
+Repository: [verified GitHub link]
+Authentic AI build conversations: [verified Claude and Codex share/export links]
+
+Regards,
 [Name]

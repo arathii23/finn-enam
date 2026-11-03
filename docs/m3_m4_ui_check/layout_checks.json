@@ -1,0 +1,170 @@
+[
+  {
+    "view": "HDFC management",
+    "expectedWidth": 360,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 360
+  },
+  {
+    "view": "CERA management",
+    "expectedWidth": 360,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 360
+  },
+  {
+    "view": "INFY quarterly",
+    "expectedWidth": 360,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 360
+  },
+  {
+    "view": "INFY narrative",
+    "expectedWidth": 360,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 360
+  },
+  {
+    "view": "Saved INFY research",
+    "expectedWidth": 360,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 360
+  },
+  {
+    "view": "Review",
+    "expectedWidth": 360,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 360
+  },
+  {
+    "view": "Research home",
+    "expectedWidth": 360,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 360
+  },
+  {
+    "view": "HDFC management",
+    "expectedWidth": 390,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 390
+  },
+  {
+    "view": "CERA management",
+    "expectedWidth": 390,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 390
+  },
+  {
+    "view": "INFY quarterly",
+    "expectedWidth": 390,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 390
+  },
+  {
+    "view": "INFY narrative",
+    "expectedWidth": 390,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 390
+  },
+  {
+    "view": "Saved INFY research",
+    "expectedWidth": 390,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 390
+  },
+  {
+    "view": "Review",
+    "expectedWidth": 390,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 390
+  },
+  {
+    "view": "Research home",
+    "expectedWidth": 390,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 390
+  },
+  {
+    "view": "HDFC management",
+    "expectedWidth": 430,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 430
+  },
+  {
+    "view": "CERA management",
+    "expectedWidth": 430,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 430
+  },
+  {
+    "view": "INFY quarterly",
+    "expectedWidth": 430,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 430
+  },
+  {
+    "view": "INFY narrative",
+    "expectedWidth": 430,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 430
+  },
+  {
+    "view": "Saved INFY research",
+    "expectedWidth": 430,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 430
+  },
+  {
+    "view": "Review",
+    "expectedWidth": 430,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 430
+  },
+  {
+    "view": "Research home",
+    "expectedWidth": 430,
+    "alert": null,
+    "pageOverflow": false,
+    "shortTargets": [],
+    "width": 430
+  }
+]

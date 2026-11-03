@@ -9,3 +9,7 @@ __pycache__/
 .DS_Store
 tmp/
 _to_delete/
+
+# Derived build artifacts (regenerate: finn export-static / scripts/make_qr.py)
+frontend/public/snapshot/
+docs/share/

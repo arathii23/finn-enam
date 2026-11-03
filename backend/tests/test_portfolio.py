@@ -25,6 +25,23 @@ def test_routine_compliance_stays_collapsed():
         assert classify(d)["tier"] == TIER_ROUTINE, d
 
 
+def test_filenames_do_not_override_specific_or_routine_exchange_categories():
+    attachment = 'https://nsearchives.nseindia.com/corporate/TESTCO_Results_Q4.pdf'
+    for category in ['Dividend', 'Record Date']:
+        assert classify(category, 'Board of Directors recommends a dividend', attachment)['ref_category'] == 'dividend'
+    assert classify('Copy of Newspaper Publication', 'Publication of audited financial results', attachment)['tier'] == TIER_ROUTINE
+    assert classify('Appointment', 'Appointment of M/s. Example & Co., Company Secretaries', attachment)['tier'] == TIER_ROUTINE
+    assert classify('Investor Presentation', 'Investor Presentation', attachment)['ref_category'] == 'investor_meetings'
+    assert classify('Analysts/Institutional Investor Meet/Con. Call Updates', 'Call on financial results', attachment)['ref_category'] == 'earnings_call'
+
+
+def test_call_notices_and_statutory_disclosures_are_not_results_or_company_acquisitions():
+    assert classify('Updates', 'Intimation of Q4 FY2025 Earnings Conference Call')['ref_category'] == 'earnings_call'
+    result = classify('Updates', 'A promoter has Submitted to the Exchange a copy of Disclosure under Regulation 31(4) of the Securities and Exchange Board of India (Substantial Acquisition of Shares and Takeovers) Regulations, 2011.')
+    assert result['ref_category'] == 'insider_trading' and result['tier'] == TIER_NOTABLE
+    assert classify('Acquisition', 'Acquisition of 100% equity stake of Example Limited')['ref_category'] == 'M&A'
+
+
 def _bars(vols, closes, prevs):
     return [{"trading_date": f"2025-04-{10+i:02d}", "volume": v, "close": c, "prev_close": p}
             for i, (v, c, p) in enumerate(zip(vols, closes, prevs))]

@@ -20,8 +20,8 @@ export function Chip({ tone, children }: { tone?: "neutral" | "warn" | "ok" | "m
   return <span className={`chip chip-${tone ?? "neutral"}`}>{children}</span>;
 }
 
-export function EvidenceButton({ id, entry, onOpen }: { id: string; entry?: EvidenceIndexEntry; onOpen: (id: string, el: HTMLElement) => void }) {
-  const label = entry ? `${(DOC_LABEL[entry.doc_type] ?? entry.doc_type).replace("Earnings-call transcript", "Transcript")} ${entry.period_label ?? ""} · PDF p.${entry.page_index}` : "Evidence";
+export function EvidenceButton({ id, entry, label: customLabel, onOpen }: { id: string; entry?: EvidenceIndexEntry; label?: string; onOpen: (id: string, el: HTMLElement) => void }) {
+  const label = customLabel ?? (entry ? `${(DOC_LABEL[entry.doc_type] ?? entry.doc_type).replace("Earnings-call transcript", "Transcript")} ${entry.period_label ?? ""} · PDF p.${entry.page_index}` : "Evidence");
   return (
     <button type="button" className="ev-btn" onClick={(e) => onOpen(id, e.currentTarget)} aria-label={`Inspect evidence: ${label}`}>
       <span aria-hidden="true">❝</span> {label}

@@ -152,6 +152,12 @@ CREATE TABLE IF NOT EXISTS model_calls (
   status TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS derived_cache (
+  cache_key TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  result TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 """
 
 

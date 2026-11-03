@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/companyview.tsx","./src/evidencesheet.tsx","./src/researchview.tsx","./src/api.ts","./src/format.ts","./src/main.tsx","./src/ui.tsx"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/companyview.tsx","./src/evidencesheet.tsx","./src/managementcard.tsx","./src/narrativeview.tsx","./src/queueview.tsx","./src/researchcomposer.tsx","./src/researchview.tsx","./src/savedresearch.tsx","./src/api.ts","./src/format.ts","./src/main.tsx","./src/ui.tsx","./src/vite-env.d.ts"],"version":"5.9.3"}

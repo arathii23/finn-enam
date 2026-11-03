@@ -9,6 +9,7 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from .brief import build_source_brief
 from .config import PROMPT_VERSION, SCHEMA_VERSION, Settings
 from .contracts import (Announcement, Claim, Company, FollowUp, Gap, GenerationInfo, ResearchOutput,
                         ResearchRequest, SectionResult)
@@ -265,6 +266,10 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
         if gen_status in ("model_unavailable", "budget_exhausted", "failed"):
             gaps.append(Gap(kind="model", text=f"Research prose not generated: {gen_reason} Retrieved passages are shown unsummarised."))
 
+    # Keyless floor: when no prose was generated, still hand the analyst a query-aware
+    # extractive brief (exact quotes, labelled and cited) instead of a raw passage dump.
+    source_brief = build_source_brief(sections, req.question) if (packet and gen_status != "generated") else None
+
     output = ResearchOutput(
         research_id=new_id("res"), company=company, mode=req.mode, cutoff=cutoff, question=req.question, event=event,
         eligible_version_ids=[v["version_id"] for v in eligible],
@@ -277,6 +282,7 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
         evidence_index={pid: {"version_id": p["version_id"], "doc_type": p["doc_type"], "period_label": p.get("period_label"),
                               "page_index": p["page_index"], "speaker": p.get("speaker"), "published_at": p.get("published_at"),
                               "excerpt": p["text"][:280]} for pid, p in packet.items()},
+        source_brief=source_brief,
     )
     state = "completed" if gen_status == "generated" and bc_r.status == "generated" and mc_r.status == "generated" else "partial"
     if not eligible:

@@ -10,7 +10,7 @@ import re
 import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from .config import IST, Settings
 from .contracts import Company
@@ -21,6 +21,14 @@ from .sources.fetch import Fetcher
 
 DISCOVERY_VERSION = "nse-discovery-v1"
 EXCHANGE_HOSTS = {"nsearchives.nseindia.com", "archives.nseindia.com", "www.nseindia.com", "nseindia.com"}
+_UNSUPPORTED_EXTENSIONS = (".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".doc", ".docx",
+                           ".xls", ".xlsx", ".ppt", ".pptx", ".html", ".htm")
+
+
+def _unsupported_attachment(url: str) -> bool:
+    # Unknown endpoint paths may still return PDF bytes; the fetcher validates
+    # those. Known archive/Office/HTML files cannot be read by this PDF parser.
+    return unquote(urlparse(url).path).lower().endswith(_UNSUPPORTED_EXTENSIONS)
 
 
 def _attachment(url: Any) -> Optional[str]:
@@ -96,7 +104,7 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
     end_day = cut.astimezone(IST).date()
     report: Dict[str, Any] = {"version": DISCOVERY_VERSION, "symbol": company.symbol,
                              "cutoff_utc": cutoff_utc, "started_at": utcnow(), "queries": [],
-                             "documents": [], "issues": [], "bounds": {"announcement_windows": 4,
+                             "documents": [], "skipped_candidates": [], "issues": [], "bounds": {"announcement_windows": 4,
                              "window_days": 90, "annual_downloads": 3, "transcript_downloads": 3}}
 
     def time_left():
@@ -127,9 +135,16 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
 
     attempts = {"annual_report": 0, "earnings_call_transcript": 0}
     tried = set()
+    skipped = set()
 
     def ingest(spec):
         kind = spec["doc_type"]
+        if _unsupported_attachment(spec["url"]):
+            if spec["url"] not in skipped:
+                skipped.add(spec["url"])
+                report["skipped_candidates"].append({"url": spec["url"], "doc_type": kind,
+                    "reason": "Unsupported attachment format; only PDF extraction is supported. No download attempt used."})
+            return
         if spec["url"] in tried or attempts[kind] >= 3 or not time_left():
             return
         tried.add(spec["url"]); attempts[kind] += 1
@@ -139,13 +154,18 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
         if result.get("state") != "fetched":
             report["issues"].append(f"{kind} {result.get('state')}: {result.get('error')}")
         elif result.get("identification", {}).get("identity_ok") is False:
-            report["issues"].append(f"Rejected {kind}: source identity, type or reporting-period check failed.")
+            if result.get("identification", {}).get("annual_report_body_verified") is False:
+                report["issues"].append("Rejected annual_report: filename-only candidate lacks substantive financial-statement pages.")
+            else:
+                report["issues"].append(f"Rejected {kind}: source identity, type or reporting-period check failed.")
 
+    # Report unsupported index entries without spending one of the three PDF
+    # attempts. Wait to combine dated PDF candidates with announcement records
+    # in newest-first windows, so ancient index rows cannot starve newer filings.
     for spec in index_specs:
-        if spec.get("_published_at"):
+        if _unsupported_attachment(spec["url"]):
             ingest(spec)
-            if any(v["doc_type"] == "annual_report" for v in eligible_types()):
-                break
+    index_specs = [s for s in index_specs if not _unsupported_attachment(s["url"])]
 
     tr_found = 0
     cursor = end_day
@@ -172,18 +192,32 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
             if stamp and start <= datetime.fromisoformat(stamp).astimezone(IST).date() <= cursor and datetime.fromisoformat(stamp) <= cut:
                 rows.append((stamp, rec))
         rows.sort(key=lambda x: x[0], reverse=True)
-        for stamp, rec in rows:
-            url = _attachment(rec.get("attchmntFile"))
-            if not ar_present:
+        if not ar_present:
+            annual_specs = [s for s in index_specs if s.get("_published_at") and
+                            start <= datetime.fromisoformat(s["_published_at"]).astimezone(IST).date() <= cursor]
+            for stamp, rec in rows:
+                url = _attachment(rec.get("attchmntFile"))
+                if not url:
+                    continue
                 spec = next((s for s in index_specs if s["url"] == url), None)
                 title = " ".join(str(rec.get(k) or "") for k in ("desc", "attchmntText"))
-                if spec is None and re.search(r"annual\s+report", title, re.I) and url:
-                    spec = {"url": url, "doc_type": "annual_report", "_discovered": True}
+                title_cue = bool(re.search(r"annual\s+report|integrated\s+report", title, re.I))
+                filename_cue = bool(re.search(r"(?:annual|integrated)[\s_.-]*report", unquote(urlparse(url).path), re.I))
+                if spec is None and (title_cue or filename_cue):
+                    explicit_type = bool(re.fullmatch(r"(?:integrated\s+)?annual\s+report", str(rec.get("desc") or "").strip(), re.I))
+                    component = bool(re.search(r"\bbrsr\b|business responsibility|sustainability report", title, re.I))
+                    spec = {"url": url, "doc_type": "annual_report", "_discovered": True,
+                            "_annual_filename_cue": not explicit_type or component}
                 if spec is not None:
-                    spec = {**spec, "_published_at": stamp, "_precision": "second", "_availability_evidence": _proof(
-                        res, rec, "exchange_announcement", "dated exchange record listing this annual-report attachment")}
-                    ingest(spec)
-                    ar_present = any(v["doc_type"] == "annual_report" for v in eligible_types())
+                    annual_specs.append({**spec, "_published_at": stamp, "_precision": "second", "_availability_evidence": _proof(
+                        res, rec, "exchange_announcement", "dated exchange record listing this annual-report candidate attachment; filename is only a discovery cue")})
+            annual_specs.sort(key=lambda s: (s.get("_published_at") or "", not s.get("_annual_filename_cue", False)), reverse=True)
+            for spec in annual_specs:
+                ingest(spec)
+                ar_present = any(v["doc_type"] == "annual_report" for v in eligible_types())
+                if ar_present:
+                    break
+        for stamp, rec in rows:
             if need_tr and tr_found < 2:
                 spec = transcript_candidate(rec, res, company)
                 if spec:
@@ -192,6 +226,15 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
                     after = {v["version_id"] for v in eligible_types() if v["doc_type"] == "earnings_call_transcript"}
                     tr_found += len(after - before)
         cursor = start - timedelta(days=1)
+
+    # A dated annual-index PDF older than the announcement lookback remains a
+    # bounded fallback. Undated entries still require an exact dated attachment.
+    if not any(v["doc_type"] == "annual_report" for v in eligible_types()):
+        for spec in index_specs:
+            if spec.get("_published_at"):
+                ingest(spec)
+                if any(v["doc_type"] == "annual_report" for v in eligible_types()):
+                    break
 
     documents.link_existing_versions(store, company)
     final = eligible_types()
