@@ -46,11 +46,11 @@ universal model accuracy; selected results were also inspected against their sou
 Next I would broaden issuer/layout coverage, validate the workflow with investors, and add a
 monitored notification channel with production retrieval and persistence checks.
 
-Prototype (open on a phone — no install, no login): [static HTTPS link + QR]
-  A read-only snapshot on a free CDN that never sleeps: full digest, saved briefs, quarterly,
-  management, narrative and primary-source evidence. On-demand research runs on the optional
-  live backend (keyless, or free Gemini); [live link if deployed, else "run locally — see README"].
-Repository: [verified GitHub link]
+Prototype (open on a phone — no install, no login): https://arathii23.github.io/finn-enam/
+  A read-only snapshot on GitHub Pages that never sleeps: full digest, saved briefs, quarterly,
+  management, narrative and primary-source evidence. On-demand research and live prices run on the
+  optional live backend (keyless, or free Gemini / free Yahoo EOD); run locally — see README.
+Repository: https://github.com/arathii23/finn-enam
 Authentic AI build conversations: [verified Claude and Codex share/export links]
 
 Regards,
