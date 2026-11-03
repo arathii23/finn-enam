@@ -279,7 +279,9 @@ class GeminiClient(ResponsesClient):
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "response_format": {"type": "json_schema",
                                 "json_schema": {"name": schema_name, "schema": schema, "strict": True}},
-            "max_tokens": max_output_tokens,
+            # Gemini 2.5 flash is a reasoning model: its internal thinking counts against the output
+            # budget, so give generous headroom or the structured JSON gets truncated ("length").
+            "max_tokens": max(max_output_tokens, 8192),
             "temperature": 0,
         }
         import time as _time
