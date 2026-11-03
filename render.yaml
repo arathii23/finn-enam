@@ -1,25 +1,22 @@
-# Render blueprint (proposal only). Not applied: creating it would provision a paid
-# service with a persistent disk. Verify plan/price and memory on the largest report first.
+# Render blueprint — FREE tier, no credit card, no persistent disk.
+# The corpus is baked into the Docker image from the GitHub Release (see Dockerfile), so no disk
+# is needed. Free instances sleep after ~15 min idle and wake on the next request (~1 min); the
+# always-on link is the static GitHub Pages demo. Deploy: render.com -> New -> Blueprint (or Web
+# Service -> connect this repo -> Docker). Then set GEMINI_API_KEY in the dashboard.
 services:
   - type: web
     name: finn
     runtime: docker
-    plan: starter
+    plan: free
     numInstances: 1
     healthCheckPath: /api/health
-    disk:
-      name: finn-data
-      mountPath: /data
-      sizeGB: 2
     envVars:
-      - key: FINN_DATA_DIR
-        value: /data
-      # Free by default: leave GEMINI_API_KEY blank for the keyless build (no model, no spend),
-      # or paste a free Google AI Studio key for genuine synthesis at zero per-token cost.
+      # Free AI synthesis: paste a free Google AI Studio key in the dashboard (never commit it).
+      # Leave it unset to run keyless (the extractive source brief still works).
+      - key: GEMINI_API_KEY
+        sync: false
       - key: FINN_MODEL_PROVIDER
         value: gemini
-      - key: GEMINI_API_KEY
-        sync: false          # set a free AI Studio key in the dashboard, or leave blank
       - key: FINN_MODEL_PRIMARY_EFFORT
         value: low
       - key: FINN_API_BUDGET_USD
