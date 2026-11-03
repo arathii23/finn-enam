@@ -46,12 +46,16 @@ universal model accuracy; selected results were also inspected against their sou
 Next I would broaden issuer/layout coverage, validate the workflow with investors, and add a
 monitored notification channel with production retrieval and persistence checks.
 
-Prototype (open on a phone — no install, no login): https://arathii23.github.io/finn-enam/
-  A read-only snapshot on GitHub Pages that never sleeps: full digest, saved briefs, quarterly,
-  management, narrative and primary-source evidence. On-demand research and live prices run on the
-  optional live backend (keyless, or free Gemini / free Yahoo EOD); run locally — see README.
+Prototype — two free links, both open on a phone with no install or login:
+  • Always-on demo (GitHub Pages, never sleeps): https://arathii23.github.io/finn-enam/
+    Full digest, saved research briefs, quarterly tables, management cards, narrative-vs-numbers,
+    primary-source evidence, and live market prices that auto-refresh every ~5 minutes.
+  • Live research backend (Render free, Gemini-powered): https://finn-mow9.onrender.com
+    Adds on-demand research for any NSE ticker with real AI synthesis (free Google Gemini),
+    grounded in and validated against the primary sources. Free instances sleep after ~15 min idle
+    and wake in ~1 minute, so the always-on link above is the primary one.
 Repository: https://github.com/arathii23/finn-enam
-Authentic AI build conversations: [verified Claude and Codex share/export links]
+Authentic AI build conversations: [your Claude Code / ChatGPT export or share links]
 
 Regards,
 [Name]
