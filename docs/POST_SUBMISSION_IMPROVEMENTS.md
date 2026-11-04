@@ -151,9 +151,11 @@ Published to the existing destinations: source `main` and the Render service (au
 5. A bare "—" in the market table now explains that the source did not report the previous session.
 
 **Limits observed (not fixed):**
-- The first current read of a company not in the seed exceeds the 180-second guard on the free
-  CPU (Sun Pharma's 345-page annual report; Infosys). Progress is stored and the retry finished in
-  about 25 seconds. Newly discovered documents vanish on redeploy (ephemeral store).
+- Before the larger seed, the first current read of a company exceeded the 180-second guard on the free
+  CPU (Sun Pharma's 345-page annual report; Infosys) and needed a retry. After publishing the larger seed
+  (4 November, evening) the same two questions finished first time in 12 s and 36 s on the public app, and
+  Infosys in 17 s after an idle spin-down. Companies outside the seed, and filings newer than the seed,
+  are still discovered on demand and lost again on spin-down. See `docs/DEPLOY_BACKEND_FREE.md`.
 - Brief highlights outside the management section are keyword matches and can be loosely related
   (an annual-report ratio table, an older filing's impairment assumptions).
 - Quotes are exact text from the PDF text layer and carry its spacing artefacts ("cauti ous").

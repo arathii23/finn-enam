@@ -60,11 +60,12 @@ is left in place by this change; it is simply not used while the provider is `ke
   holdings (53 announcements). SUNPHARMA stayed partial because one record failed validation; the
   page names it instead of showing 15/15. A repeat inside 15 minutes is served from the cache at its
   original timestamps.
-- **First current read of a new company:** this is the slow step. Downloading and parsing a company's
-  large annual report and transcripts on the free CPU exceeded the 180-second research limit for
-  both Sun Pharma (a 345-page annual report) and Infosys. The job then ends with a plain-language
-  message and a Retry action, because documents already read are stored. The retries finished in
-  about 25 seconds. No out-of-memory restart occurred in these runs; the service stayed healthy.
+- **First current read of a company (before the larger seed):** this was the slow step. Downloading and
+  parsing a company's large annual report and transcripts on the free CPU exceeded the 180-second
+  research limit for both Sun Pharma (a 345-page annual report) and Infosys. The job then ended with a
+  plain-language message and a Retry action, and the retries finished in about 25 seconds. No
+  out-of-memory restart occurred; the service stayed healthy. This still applies to any company whose
+  documents are not in the seed.
 - **Ephemeral store:** documents discovered at run time live in the instance's disk and are lost on
   redeploy, restart **and spin-down** (Render's free-tier documentation says all local files, including
   SQLite, are lost in those cases). I measured only the redeploy case (the corpus returned from 34 to
@@ -80,7 +81,7 @@ is left in place by this change; it is simply not used while the provider is `ke
 - NSE access from a datacenter can change; failures surface as named source gaps, not as all-clear.
 - Budget guards remain ($5 total, $0.25 per job). They are ceilings, not permission to spend.
 
-## Larger seed corpus (built and published on 4 November 2026)
+## Larger seed corpus (built and published on 4 November 2026; hosted results below)
 
 Because the free instance forgets what it discovers, the practical fix is to ship more verified
 documents inside the image's seed. `scripts/build_seed.py` builds one from an isolated copy of the
@@ -114,3 +115,14 @@ never written (its SHA-256 was identical before and after).
 unpacks to about **550 MB** on the instance's disk (about 160 MB now). Render's free-tier disk and
 build limits are not documented precisely, so measure the first build. The seed is dated (shown in
 `SEED_MANIFEST.json`); filings after that date still need the on-demand check.
+
+**Hosted results after publishing** (Release `corpus-2026-11-04`, source `93e0874`): Render built and
+swapped in the new image in about 85 seconds with the 423 MB seed (the earlier instance kept serving
+until it was ready). `/api/health` reports `seed.built_at 2026-11-04T08:42Z`, 84 documents and 27,570
+passages. On the public free instance, with no retry: the Infosys current guidance question finished in
+**12 s** and the Sun Pharma results-filing question in **36 s** (both previously failed at 180 s), each
+with 5 of 5 highlights exact substrings of their cited passages and no model usage. After more than 15
+idle minutes the instance woke in 32 s, had restarted (the two test jobs were gone; the saved list was
+back to the three genuine briefs), still held the 84-document seed, and answered the same Infosys
+question in **17 s** on the first attempt. Documents for companies outside the seed (or filings published
+after the seed date) are still discovered on demand and forgotten again on spin-down.
