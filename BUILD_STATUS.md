@@ -13,7 +13,16 @@ seed with more current documents was built in an isolated copy of the production
 previously failing current questions finish first-attempt locally, the seed unpacks to about 550 MB, and
 9 of 15 holdings still lack a usable current transcript because the identity gates were not loosened. The
 production database hash was unchanged. Rollback: point the `Dockerfile` `SEED_URL` back at
-`corpus-2026-11-03`. Hosted verification results are recorded in the final lines of this entry.
+`corpus-2026-11-03`.
+
+**Hosted verification (public Render app, keyless, source `93e0874`):** `/api/health` reports the new seed
+(built 2026-11-04T08:42Z, 84 documents). Without retry the Infosys current guidance question finished in 12 s
+and the Sun Pharma results-filing question in 36 s (both failed at 180 s before), 5/5 highlights exact each.
+After more than 15 idle minutes the instance woke in 32 s, had restarted (test jobs gone, saved list back to
+the three genuine briefs), kept the 84-document seed, and answered Infosys in 17 s. Public download of the
+Release matched the packed SHA-256. Limits: companies outside the seed and filings newer than it are still
+discovered on demand and lost on spin-down; Reliance, Bharti and UltraTech documents remain excluded by the
+identity gates; the static GitHub Pages demo was not changed (its content is the replay snapshot).
 
 ## 4 November 2026 (later) — published and verified on the existing links (Claude Code)
 
