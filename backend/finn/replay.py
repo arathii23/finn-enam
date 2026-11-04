@@ -45,7 +45,7 @@ def classify_versions(store: Store, company_id: str, mode: str, cutoff_utc: Opti
     """Return (eligible, excluded-with-reasons) document versions for a company and mode."""
     rows = store.query("SELECT * FROM document_versions WHERE company_id=? ORDER BY published_at DESC", (company_id,))
     eligible, excluded = [], []
-    cutoff = _ts(cutoff_utc)
+    cutoff = _ts(cutoff_utc) or (datetime.now(timezone.utc) if mode == "live" else None)
     for row in rows:
         ident = json.loads(row["identification"] or "{}")
         reasons = []
@@ -53,11 +53,10 @@ def classify_versions(store: Store, company_id: str, mode: str, cutoff_utc: Opti
             reasons.append("text extraction failed")
         if not ident.get("identity_ok", False):
             reasons.append("document identity check failed")
-        if mode == "replay":
-            if row["availability_status"] != "verified":
-                reasons.append("publication availability unverified")
-            elif cutoff is not None and _ts(row["published_at"]) > cutoff:
-                reasons.append("published after replay cutoff")
+        if row["availability_status"] != "verified" or not row["published_at"]:
+            reasons.append("publication availability unverified")
+        elif cutoff is not None and _ts(row["published_at"]) > cutoff:
+            reasons.append("published after replay cutoff" if mode == "replay" else "published after source-check cutoff")
         target = excluded if reasons else eligible
         target.append({**row, "identification": ident, "exclusion_reasons": reasons})
     return eligible, excluded

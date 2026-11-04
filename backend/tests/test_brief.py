@@ -51,3 +51,37 @@ def test_suggestions_gated_by_available_evidence():
     # No transcript -> no guidance/demand suggestion; business suggestion is offered.
     assert any("segments" in q for q in brief.suggested_questions)
     assert not any("guidance" in q for q in brief.suggested_questions)
+
+
+def test_guidance_question_surfaces_direct_answer_before_dense_historical_results():
+    actual = _mc("Revenue growth was below our expectations. Operating margin was 18 percent.", pid="actual")
+    target = _mc("Revenue growth guidance is 1 to 2 percent in constant currency. "
+                 "Operating margin guidance is 20 to 22 percent for the year.", pid="target")
+    assumptions = _mc("Operating margin guidance is 20 to 22 percent. "
+                      "Compensation increases and revenue seasonality are headwinds. "
+                      "These headwinds will be partly offset by our cost programme.", pid="assumptions")
+    historical = {**_bc("Revenue growth and operating margin for last year are reported below.", pid="historical"),
+                  "doc_type": "exchange_filing"}
+    brief = build_source_brief({"management_commentary": [actual, target, assumptions],
+                               "event_filing": [historical]},
+                              "What revenue growth and operating margin guidance does management give?")
+    assert brief.highlights[0].evidence_id == "target"
+    assert "1 to 2 percent" in brief.highlights[0].quote
+    condition = next(h for h in brief.highlights if h.evidence_id == "assumptions")
+    assert "partly offset" in condition.quote
+    assert all(h.kind == "management_commentary" for h in brief.highlights[:3])
+
+
+def test_repeated_bundled_guidance_keeps_distinct_assumptions_and_changed_figures():
+    def passage(pid, text):
+        return {**_mc(text, pid=pid), "version_id": "bundle"}
+    first = passage("media", "Our revenue growth guidance is 1 to 2 percent. Operating margin guidance remains 20 to 22 percent.")
+    repeat = passage("analyst", "Our revenue growth guidance is 1 to 2 percent. Our operating margin guidance remains 20 to 22 percent.")
+    conditions = passage("basis", "Our revenue growth guidance is 1 to 2 percent, assuming demand recovers. "
+                                  "Our operating margin guidance remains 20 to 22 percent.")
+    changed = passage("changed", "Our revenue growth guidance is 2 to 3 percent. Operating margin guidance remains 20 to 22 percent.")
+    brief = build_source_brief({"management_commentary": [first, repeat, conditions, changed]},
+                               "What is the revenue growth guidance?")
+    ids = {h.evidence_id for h in brief.highlights}
+    assert {"media", "basis", "changed"} == ids
+    assert next(h.quote for h in brief.highlights if h.evidence_id == "basis") in conditions["text"]

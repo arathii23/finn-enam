@@ -38,8 +38,8 @@ _DESC_RULES: List[tuple] = [
 _REFINE_RULES: List[tuple] = [
     (r"transcript", ("earnings_call", TIER_NOTABLE, "Earnings-call transcript")),
     (r"conference call|earnings call|con\.\s*call", ("earnings_call", TIER_NOTABLE, "Earnings-call notice / recording")),
-    (r"investor release|result", ("results", TIER_LEADING, "Results-related filing")),
-    (r"acqui|merger|amalgamation|scheme of arrangement|stake", ("M&A", TIER_LEADING, "M&A / restructuring")),
+    (r"investor release|financial[ _-]*results?|(?:audited|unaudited|quarterly|annual).{0,25}results?|results?.{0,25}(?:quarter|year ended|financial)", ("results", TIER_LEADING, "Results-related filing")),
+    (r"acqui|merger|amalgamation|scheme of arrangement|\bstake\b", ("M&A", TIER_LEADING, "M&A / restructuring")),
 ]
 _PERSONNEL_ACTION = re.compile(r"appoint|resign|cessation|retir|removal|change in (?:management|director|key managerial)", re.I)
 _LEADERSHIP = re.compile(r"\b(?:ceo|cfo|coo|director|chief|president|group head|senior management|key managerial|company secretary)\b", re.I)
@@ -55,6 +55,8 @@ def classify(category: Optional[str], subject: Optional[str] = None, attachment_
     desc = (category or "").lower()
     hay = " ".join(x for x in (subject or "", attachment_url or "") if x).lower()
     personnel = " ".join((desc, subject or ""))
+    if re.search(r"postal ballot|voting results?|scrutini[sz]er", personnel, re.I):
+        return {"ref_category": "agm_egm", "tier": TIER_NOTABLE, "reason": "Shareholder vote / postal ballot"}
     ref, tier, reason = "unclassified", TIER_ROUTINE, "Routine / compliance"
 
     for pat, (r, t, why) in _DESC_RULES:

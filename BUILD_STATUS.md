@@ -1,6 +1,35 @@
 # FINN build status
 
-Updated 3 November 2026 (IST). **130 backend tests and both frontend builds (live + static) pass; the static snapshot demo is verified end-to-end on a mobile viewport. A free, never-sleeping phone demo and a genuinely useful keyless research path are now implemented and locally verified. Deployment, commit/push and submission remain approval gates — nothing has been committed, pushed, publicly deployed or submitted.** Earlier dated entries are historical; the latest entry supersedes their current-state claims.
+Updated 4 November 2026 (IST). **The user reports that FINN has already been submitted, with the existing GitHub Pages and Render links. This continuation improves the local product after that submission.** The current working tree adds explicit current-filing checks, current-source research, a personal research notebook, better question relevance and free-provider choices beyond Gemini. It has not published an update to those existing links. Earlier dated entries describe their own checkpoints and do not establish today's submission or deployment state.
+
+## 4 November 2026 — practical investor workflow after submission (Codex)
+
+Read [the change and verification report](docs/POST_SUBMISSION_IMPROVEMENTS.md) for the submitted-email
+claim check, current limits and actual validation. The everyday journey is: check recent portfolio
+filings, read an original notice, ask a focused question, inspect the evidence, and save a cited point
+with a personal follow-up in the browser notebook. The historical demonstration remains available.
+
+- Current checks validate company/date/source records, retain older data on failure and show source
+  check times separately from publication/session dates. Current research checks bounded annual-report
+  and earnings-call candidates; selected filing attachments are read only on an explicit request.
+- Keyless answers require relevant text and preserve conditions across passage boundaries. A real
+  newer transcript exposed a mismatch between standalone speaker extraction and discovery; discovery
+  now uses the same speech rules and can read explicit call titles later in bundled PDFs. AGM-only
+  transcripts remain excluded. Existing valid saved evidence is not globally invalidated.
+- Static research actions open a prefilled live-app link. Search, question drafts, the notebook,
+  touch controls and source dates make the workflow usable beyond a prepared demonstration.
+- Keyless is the code/container/blueprint default. Optional Groq and free-only OpenRouter adapters
+  use the existing source checks and source-brief fallback; account access and real model quality
+  are not certified. See [free resources and setup](docs/FREE_RESOURCES.md).
+
+Local verification uses an isolated copy of the corpus and disables every model key. A real portfolio
+check retained 49 valid recent announcements; 14/15 holding responses were fully validated and the
+remaining holding's partial check is visible. A fresh Infosys run read its October 2026 call and
+FY2025-26 annual report with genuine exchange publication proof. Responsive checks covered five
+views at 360/390/430 CSS pixels; notebook notes survived a real reload. Final counts and publication
+instructions are kept in the linked report. No key, billing setting, new submission, commit, push or
+hosted deployment was performed in this continuation. No Docker/Podman is installed locally, so a
+container build, hosted source access and a physical-phone test remain unverified.
 
 ## 3 November 2026 (later) — keyless source brief, free Gemini, free static phone demo (Claude Code)
 

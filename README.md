@@ -2,8 +2,15 @@
 
 FINN combines a prioritised 15-company review queue with primary-source company research, a
 guidance-versus-outcome comparison, quarterly headline tables and appointment profiles. Claims
-link to the exact evidence passage and PDF page. The demo is a labelled historical replay with
-an evidence cutoff of 30 April 2025; unavailable data remains an explicit gap.
+link to the exact evidence passage and PDF page. The historical demo has an evidence cutoff of
+30 April 2025. The live app also offers explicit current-filing checks and current-source
+research; each check shows its actual dates, coverage and failures.
+
+**4 November practical-use update:** company-name search, current exchange-filing checks,
+current-source questions, a private browser notebook for cited points and follow-ups, Markdown
+export, and direct static-demo-to-live research links. Optional Groq and free-only OpenRouter
+adapters join Gemini. Read [the verified change record](docs/POST_SUBMISSION_IMPROVEMENTS.md)
+and [free-resource setup](docs/FREE_RESOURCES.md).
 
 Requirements: `1. ENAM_AI_Engineer_Build_Challenge_Main.pdf`, `2. ENAM_AI_Engineer_Build_Challenge_Reference.pdf`. Scope decisions: `FINN_Prebuild_Specification.md`. Current state and test evidence: **`BUILD_STATUS.md`**.
 
@@ -17,7 +24,9 @@ python -m finn serve               # http://127.0.0.1:8000
 python -m finn serve --host 0.0.0.0  # to open from a phone on the same Wi-Fi: http://<mac-LAN-IP>:8000
 ```
 
-**Free by default (no key, nothing to spend).** With no model key set, FINN runs fully keyless:
+**Keyless by default.** When `FINN_MODEL_PROVIDER` is unset or `keyless`, FINN makes no model
+calls, even if old credentials exist in the environment. An explicitly configured provider
+overrides that default. Without model generation, the following still work:
 the Push digest, saved research briefs, quarterly tables, management cards, narrative-vs-numbers
 and — for a fresh question — a **verbatim extractive source brief** that quotes the sentences most
 relevant to your question from the primary sources and cites each one (`backend/finn/brief.py`).
@@ -26,11 +35,17 @@ submission configuration, so the evaluator needs no key.
 
 **Optional genuine AI synthesis, also free.** Get a free Google AI Studio key
 (https://aistudio.google.com/apikey — no billing) and set `FINN_MODEL_PROVIDER=gemini` with
-`GEMINI_API_KEY=...` in a local `.env`. On-demand research then runs through `gemini-2.0-flash` at
+`GEMINI_API_KEY=...` in a local `.env`. On-demand research then runs through `gemini-2.5-flash` at
 zero per-token cost, through the same citation/number/speaker validation gates; a free-tier rate
 limit degrades gracefully to the keyless source brief. Paid providers (`anthropic`, `openai`)
 remain selectable but are never required. See `.env.example`. Budget ceilings: **$5 total, $0.25
 per job** (list-price reservations; the free tier reserves $0).
+
+**Other optional providers:** select `groq` with a server-side `GROQ_API_KEY` on a Free-plan
+account, or `openrouter` with `OPENROUTER_API_KEY`. OpenRouter routing is restricted to
+`openrouter/free` / explicit `:free` models and zero-price provider routes. Provider limits and
+eligibility remain account-specific; neither new adapter has been tested with a real key.
+Failures return the source brief. No key belongs in the browser or a `VITE_*` variable.
 
 **Put it on a phone — free, no sleep.** Build a static snapshot and publish it to any free CDN,
 plus a QR code. See **`docs/DEPLOY_FREE.md`**.
@@ -48,6 +63,14 @@ Individual commands (from `backend/`): `python -m finn check-runtime` · `python
   the verified replay (`backend/finn/sources/live_eod.py`, `GET /api/live-prices`, `python -m finn live-prices`).
 - **Research (Pull):** `#/research` or any `#/c/<SYMBOL>` — primary-source company research with per-claim
   evidence you can open at the exact PDF page.
+- **Current sources:** choose Current filings in Review, then **Check latest filings**, to fetch
+  the last seven IST calendar dates of exchange metadata for the portfolio. Current-source company
+  research separately checks annual reports/transcripts and reads a deliberately selected filing.
+  Opening a page is read-only. Checks are bounded and reused for 15 minutes; a failed check retains
+  older sources with its gap disclosed. This is an on-demand check, not notification delivery.
+- **Notebook:** `#/notebook` — save a cited point, exact quote or question, add your own note,
+  mark it followed up, and export Markdown with source URLs, pages and hashes. Stored only in the
+  current browser/origin; it does not sync between GitHub Pages and the live backend.
 - **Numbers vs Narrative:** `#/c/INFY/narrative` — deterministic guidance/outcome comparisons with
   metric, year, entity and currency-basis gates; unmatched outcomes remain pending.
 - **Company context:** `#/c/INFY` has a saved quarterly table; `#/c/HDFCBANK` and `#/c/CERA` have
@@ -61,7 +84,8 @@ cd backend && python -m finn ingest HCLTECH RELIANCE ICICIBANK BHARTIARTL LT MAR
 All 15 holdings are populated in the current local database. Rebuild the UI with
 `cd frontend && npm install && npm run build`. Data and source PDFs are git-ignored: a fresh checkout
 needs ingestion or an intentionally seeded copy of `data/`. Saved research can be read without a
-model call; new summaries require configured API access. See `BUILD_STATUS.md` for verified coverage.
+model call; fresh questions return source extracts without a model, while optional synthesis
+requires an explicitly selected provider. See `BUILD_STATUS.md` for verified coverage.
 
 
 ## Architecture

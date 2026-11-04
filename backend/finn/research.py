@@ -64,11 +64,14 @@ def build_packet(company: Company, req: ResearchRequest, cfg: Optional[ReplayCon
     lines = [f"Company: {company.legal_name} (NSE: {company.symbol}, ISIN {company.isin})"]
     if req.mode == "replay" and cfg:
         lines.append(f"Mode: historical replay; evidence available by {cfg.cutoff_display}. Write as of that date.")
+    else:
+        lines.append(f"Mode: current-source request; reference time {utcnow()}. Source discovery is bounded and may be incomplete. "
+                     "An old document does not become current because it was checked today. Keep each reporting period and publication date explicit; do not imply complete or up-to-the-minute coverage.")
     lines.append(f"Question: {req.question or 'What does this company do, and what is management saying?'}")
     for name, passages in sections.items():
         for p in passages:
             attrs = (f'id="{p["passage_id"]}" section="{name}" doc_type="{p["doc_type"]}" '
-                     f'period="{p.get("period_label") or "unknown"}" pdf_page="{p["page_index"]}"')
+                     f'period="{p.get("period_label") or "unknown"}" published_at="{p.get("published_at") or "unknown"}" pdf_page="{p["page_index"]}"')
             if p.get("speaker"):
                 attrs += f' speaker="{_escape(p["speaker"])}"'
             lines.append(f"<evidence {attrs}>\n{_escape(p['text'])}\n</evidence>")
@@ -176,7 +179,7 @@ def coverage_gaps(eligible: List[Dict], excluded: List[Dict], mode: str) -> List
 
 def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], company: Company, req: ResearchRequest,
                  client: Optional[ResponsesClient], job_id: Optional[str], progress) -> Tuple[str, ResearchOutput]:
-    cutoff = cfg.cutoff_utc if (req.mode == "replay" and cfg) else None
+    cutoff = cfg.cutoff_utc if (req.mode == "replay" and cfg) else utcnow()
     progress("finding_documents")
     eligible, excluded = classify_versions(store, company.company_id, req.mode, cutoff)
     event = None
@@ -192,8 +195,10 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
         "business_context": retrieve_section(store, "business_context", eligible, req.question),
         "management_commentary": retrieve_section(store, "management_commentary", eligible, req.question),
     }
-    if event is not None:
+    if event is not None or (req.question and any(v["doc_type"] == "exchange_filing" for v in eligible)):
         sections["event_filing"] = retrieve_section(store, "event_filing", eligible, req.question, restrict_version_ids=event_versions or [])
+        if event is None:
+            sections["event_filing"] = retrieve_section(store, "event_filing", eligible, req.question)
     packet = {p["passage_id"]: p for ps in sections.values() for p in ps}
     fingerprint = sha256_bytes(json.dumps(sorted(v["version_id"] for v in eligible)).encode())[:16]
 
@@ -214,7 +219,9 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
     if not packet:
         gen_status, gen_reason = "skipped_no_evidence", "No eligible passages; nothing to summarise."
     elif client is None or not settings.model_configured:
-        gen_reason = f"{settings.model_api_key_env} is not configured; research prose was not generated."
+        gen_reason = ("Source brief mode: exact primary-source extracts are available without a model."
+                      if settings.model_provider == "keyless" else
+                      f"Optional {settings.model_provider} summary is unavailable ({settings.model_api_key_env} is not configured); exact source extracts remain available.")
     else:
         user = build_packet(company, req, cfg, sections)
         attempts = [(settings.model_primary, settings.model_primary_effort), (settings.model_escalation, settings.model_escalation_effort)]
@@ -228,7 +235,7 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
             except BudgetExceeded as exc:
                 gen_status, gen_reason = "budget_exhausted", str(exc)
                 break
-            model_used, usage = model, result.usage
+            model_used, usage = result.model, result.usage
             if result.status == "completed" and result.data is not None:
                 data, gen_status, gen_reason = result.data, "generated", None
                 break
@@ -241,7 +248,7 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
     if data is not None:
         bc = validate_claims(data.get("business_context"), packet, {"annual_report"}, "business_context", removed)
         mc = validate_claims(data.get("management_commentary"), packet, {"earnings_call_transcript"}, "management_commentary", removed)
-        ef = validate_claims(data.get("event_filing"), packet, {"exchange_filing"}, "event_filing", removed) if event else []
+        ef = validate_claims(data.get("event_filing"), packet, {"exchange_filing"}, "event_filing", removed) if "event_filing" in sections else []
         for g in data.get("evidence_gaps") or []:
             ids = [i for i in g.get("evidence_ids") or [] if i in packet]
             if g.get("text"):
@@ -255,20 +262,22 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
             gaps.append(Gap(kind="validation", text=f"{len(removed)} generated statement(s) were removed because their citations or numbers did not verify."))
         bc_r = section_result("business_context", bc, "generated" if bc else "insufficient_evidence")
         mc_r = section_result("management_commentary", mc, "generated" if mc else "insufficient_evidence")
-        ef_r = section_result("event_filing", ef, "generated" if ef else "insufficient_evidence") if event else None
+        ef_r = section_result("event_filing", ef, "generated" if ef else "insufficient_evidence") if "event_filing" in sections else None
     else:
         st = "failed" if gen_status in ("failed",) else "model_unavailable"
         note = gen_reason
         bc_r = section_result("business_context", None, st, note)
         mc_r = section_result("management_commentary", None, st, note)
-        ef_r = section_result("event_filing", None, st, note) if event else None
+        ef_r = section_result("event_filing", None, st, note) if "event_filing" in sections else None
         follow = FollowUp(status="model_unavailable" if gen_status != "failed" else "failed")
         if gen_status in ("model_unavailable", "budget_exhausted", "failed"):
             gaps.append(Gap(kind="model", text=f"Research prose not generated: {gen_reason} Retrieved passages are shown unsummarised."))
 
     # Keyless floor: when no prose was generated, still hand the analyst a query-aware
     # extractive brief (exact quotes, labelled and cited) instead of a raw passage dump.
-    source_brief = build_source_brief(sections, req.question) if (packet and gen_status != "generated") else None
+    source_brief = build_source_brief(sections, req.question) if gen_status != "generated" else None
+    if req.question and not packet:
+        gaps.insert(0, Gap(kind="question", text="No eligible source passage matched this question. Try another topic or check the missing document/period; unrelated company prose is not an answer."))
 
     output = ResearchOutput(
         research_id=new_id("res"), company=company, mode=req.mode, cutoff=cutoff, question=req.question, event=event,
@@ -285,6 +294,8 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
         source_brief=source_brief,
     )
     state = "completed" if gen_status == "generated" and bc_r.status == "generated" and mc_r.status == "generated" else "partial"
+    if req.question and gen_status == "generated" and any(s and s.claims for s in (bc_r, mc_r, ef_r)):
+        state = "completed"
     if not eligible:
         state = "partial"
     return state, output

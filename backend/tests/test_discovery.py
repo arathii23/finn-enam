@@ -107,6 +107,64 @@ def test_transcript_intimation_cover_is_not_a_transcript_body(env):
     assert not classify_versions(store, c.company_id, "replay", CUTOFF)[0]
 
 
+def test_bundled_standalone_dialogue_is_eligible_and_reads_later_call_title(env):
+    settings, store, _, net = env
+    url = f"{BASE}/corporate/bundled_calls.pdf"
+    net.pdfs[url] = make_pdf([
+        "Testco Industries Limited\nTranscripts of the media conference and earnings call",
+        "Testco Industries Limited\nMedia Conference Call\nCORPORATE PARTICIPANTS:\n"
+        "Asha Rao\nChief Executive Officer\nVikram Shah\nChief Financial Officer\nJOURNALISTS\nRitu Singh",
+        "Asha Rao\nOur revenue growth guidance remains conditional on existing customer orders.\n"
+        "Ritu Singh\nHow does management expect operating margins to change during the year?\n"
+        "Vikram Shah\nOur operating margin guidance includes the planned investment in the new plant.",
+        "Testco Industries Limited\nQ4 FY25 Earnings Conference Call\nCORPORATE PARTICIPANTS:\n"
+        "Asha Rao\nChief Executive Officer\nVikram Shah\nChief Financial Officer\nANALYSTS\nRitu Singh",
+        "Asha Rao\nWe expect revenue growth subject to the customer contract renewals.\n"
+        "Ritu Singh\nWould you explain the assumptions behind the outlook for the coming year?\n"
+        "Vikram Shah\nOur guidance remains conditional on the timing of customer purchase orders.",
+    ])
+    f = network(env); c = company(env, f)
+    spec = {"url": url, "doc_type": "earnings_call_transcript", "_discovered": True,
+            "_published_at": "2025-04-22T10:00:00+00:00", "_precision": "second"}
+    result = documents.ingest_document(store, f, c, spec)
+    assert result["identification"]["transcript_dialogue_verified"]
+    eligible, _ = classify_versions(store, c.company_id, "replay", CUTOFF)
+    assert len(eligible) == 1 and eligible[0]["period_label"] == "Q4 FY2024-25"
+    assert eligible[0]["identification"]["management_speakers"] == ["Asha Rao", "Vikram Shah"]
+    # Re-evaluate old rejected bytes without invalidating valid saved evidence.
+    ident = {**result["identification"], "identity_ok": False}
+    ident.pop("transcript_check_version")
+    store.execute("UPDATE document_versions SET identification=? WHERE version_id=?",
+                  (json.dumps(ident), result["version_id"]))
+    repaired = documents.ingest_document(store, f, c, spec)
+    assert not repaired.get("skipped_extraction") and repaired["identification"]["identity_ok"]
+    reused = documents.ingest_document(store, f, c, spec)
+    assert reused["skipped_extraction"]
+
+
+def test_agm_dialogue_and_speaker_roster_are_not_earnings_transcripts(env):
+    _, store, _, net = env
+    f = network(env); c = company(env, f)
+    pages = ["Testco Industries Limited\nTranscript of Annual General Meeting\n"
+             "Asha Rao: Welcome shareholders to our annual general meeting and opening remarks.\n"
+             "Ritu Singh: I would like to ask the board about the dividend proposal for the year.\n"
+             "Vikram Shah: The board has recommended a dividend subject to shareholder approval."]
+    url = f"{BASE}/corporate/agm.pdf"; net.pdfs[url] = make_pdf(pages)
+    r = documents.ingest_document(store, f, c, {"url": url, "doc_type": "earnings_call_transcript",
+        "_discovered": True, "_published_at": "2025-04-22T10:00:00+00:00"})
+    assert not r["identification"]["transcript_dialogue_verified"]
+    assert not r["identification"]["identity_ok"]
+
+
+def test_later_dialogue_does_not_establish_a_reporting_period():
+    p = documents.infer_reporting_period([
+        "Testco Industries Limited\nTranscript of earnings call",
+        "Management participants listed here.",
+        "We plan to discuss Q4 FY26 earnings conference call preparations next month.",
+    ], "earnings_call_transcript")
+    assert "period_label" not in p
+
+
 def test_annual_index_period_cannot_override_conflicting_cover(env):
     settings, store, _, net = env
     bad_url = f"{BASE}/corporate/mislabelled_annual.pdf"

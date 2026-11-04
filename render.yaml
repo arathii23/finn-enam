@@ -2,7 +2,8 @@
 # The corpus is baked into the Docker image from the GitHub Release (see Dockerfile), so no disk
 # is needed. Free instances sleep after ~15 min idle and wake on the next request (~1 min); the
 # always-on link is the static GitHub Pages demo. Deploy: render.com -> New -> Blueprint (or Web
-# Service -> connect this repo -> Docker). Then set GEMINI_API_KEY in the dashboard.
+# Service -> connect this repo -> Docker). Optional model settings are added explicitly in
+# the dashboard; the default requires no API key. See docs/FREE_RESOURCES.md.
 services:
   - type: web
     name: finn
@@ -11,12 +12,11 @@ services:
     numInstances: 1
     healthCheckPath: /api/health
     envVars:
-      # Free AI synthesis: paste a free Google AI Studio key in the dashboard (never commit it).
-      # Leave it unset to run keyless (the extractive source brief still works).
-      - key: GEMINI_API_KEY
-        sync: false
+      # Optional synthesis: select gemini/groq/openrouter and set that provider's
+      # server-side key in the dashboard. Existing explicit host settings are unchanged
+      # until the operator applies a blueprint update.
       - key: FINN_MODEL_PROVIDER
-        value: gemini
+        value: keyless
       - key: FINN_MODEL_PRIMARY_EFFORT
         value: low
       - key: FINN_API_BUDGET_USD

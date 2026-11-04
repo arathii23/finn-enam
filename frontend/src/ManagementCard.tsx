@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, type ManagementChanges } from "./api";
+import { api, type ManagementChanges, type ResearchMode } from "./api";
 import { istDateTime } from "./format";
 import { Chip, EvidenceButton, Section } from "./ui";
 
-export function ManagementCard({ symbol, onEvidence }: {
-  symbol: string; onEvidence: (id: string, el: HTMLElement) => void;
+export function ManagementCard({ symbol, mode = "replay", onEvidence }: {
+  symbol: string; mode?: ResearchMode; onEvidence: (id: string, el: HTMLElement) => void;
 }) {
   const [data, setData] = useState<ManagementChanges | null>(null);
   const [error, setError] = useState(false);
@@ -12,9 +12,9 @@ export function ManagementCard({ symbol, onEvidence }: {
   useEffect(() => {
     let live = true;
     setData(null); setError(false);
-    api.management(symbol).then((r) => live && setData(r)).catch(() => live && setError(true));
+    api.management(symbol, mode).then((r) => live && setData(r)).catch(() => live && setError(true));
     return () => { live = false; };
-  }, [symbol, attempt]);
+  }, [symbol, mode, attempt]);
 
   if (error) return <Section title="Management change"><p className="muted">Appointment context could not be loaded.</p><button className="btn btn-small" onClick={() => setAttempt(attempt + 1)}>Retry</button></Section>;
   if (!data) return <Section title="Management change"><p className="muted" role="status">Checking appointment filings…</p></Section>;

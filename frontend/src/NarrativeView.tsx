@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError, type Narrative, type NarrativeItem, type NarrativeStatement } from "./api";
+import { api, ApiError, type Narrative, type NarrativeItem, type NarrativeStatement, type ResearchMode } from "./api";
 import { docLabel } from "./format";
 import { Chip, EvidenceButton, Section, StateBox } from "./ui";
 
-type Props = { symbol: string; onEvidence: (id: string, el: HTMLElement) => void; onBack: () => void };
+type Props = { symbol: string; mode?: ResearchMode; onEvidence: (id: string, el: HTMLElement) => void; onBack: () => void };
 
-export function NarrativeView({ symbol, onEvidence, onBack }: Props) {
+export function NarrativeView({ symbol, mode = "replay", onEvidence, onBack }: Props) {
   const [data, setData] = useState<Narrative | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
 
   const load = useCallback(() => {
     setData(null); setError(null);
-    api.narrative(symbol).then(setData).catch(setError);
-  }, [symbol]);
+    api.narrative(symbol, mode).then(setData).catch(setError);
+  }, [symbol, mode]);
   useEffect(load, [load]);
 
   if (error) {

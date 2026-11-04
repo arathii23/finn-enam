@@ -21,10 +21,10 @@ export function SavedResearch({ symbol }: { symbol?: string }) {
           : items.length === 0 ? <p className="muted">No saved research{symbol ? ` for ${symbol}` : ""} yet. Run a company overview or ask a focused question.</p>
             : <ul className="saved-research-list">{items.map((item) => (
               <li key={item.job_id}>
-                <a className="saved-research-link" href={`#/c/${encodeURIComponent(item.symbol)}/research/${encodeURIComponent(item.job_id)}`}>
+                <a className="saved-research-link" href={`#/c/${encodeURIComponent(item.symbol)}/research/${encodeURIComponent(item.job_id)}?mode=${item.mode === "live" ? "live" : "replay"}`}>
                   <span className="saved-research-title">{!symbol && <strong>{item.symbol} · </strong>}{item.question || "Company overview"}</span>
                   <span className="sub">{!symbol && `${item.legal_name} · `}{item.document_count} source documents</span>
-                  <span className="sub">Prepared {istDateTime(item.generated_at)}</span>
+                  <span className="sub">{item.mode === "live" ? "Current-source run" : "Historical replay"} · {item.kind === "source_brief" ? "Source quotes" : "Cited brief"} · prepared {istDateTime(item.generated_at)}</span>
                   <span className="saved-research-cta">Read saved research →</span>
                 </a>
               </li>

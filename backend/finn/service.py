@@ -19,10 +19,12 @@ from .replay import ReplayConfig, announcements_in_window, classify_versions, lo
 from .prioritize import classify, eod_anomaly
 from . import management, quarterly
 from .research import run_research
-from .sources import nse
+from .sources import documents, nse
 from .sources.fetch import Fetcher
 
 STAGES = ["resolving_company", "discovering_sources", "downloading_sources", "finding_documents", "reading_sources", "preparing_research"]
+RESEARCH_PIPELINE_VERSION = "practical-source-context-2026-11-04"
+SOURCE_REFRESH_CACHE_S = 15 * 60
 
 
 def _fiscal_end_year(cutoff_utc: Optional[str]) -> int:
@@ -51,6 +53,7 @@ class App:
         self.client = client if client is not None else (create_model_client(settings, self.store) if settings.model_configured else None)
         self._queue: "queue.Queue[str]" = queue.Queue(maxsize=20)
         self._submission_lock = threading.Lock()
+        self._current_refresh_lock = threading.Lock()
         self.fetcher_factory = fetcher_factory or (lambda: Fetcher(self.store, max_bytes=settings.max_download_bytes))
         self._mark_interrupted()
         if start_worker:
@@ -68,6 +71,8 @@ class App:
             "model_configured": self.settings.model_configured,
             "model_provider": self.settings.model_provider,
             "model_primary": self.settings.model_primary,
+            "capabilities": {"keyless_research": True, "current_source_research": True,
+                             "source_refresh": "explicit_research_request", "refresh_cache_seconds": SOURCE_REFRESH_CACHE_S},
             "replay": self.replay_info(),
             "corpus": counts,
             "frontend_built": (self.settings.frontend_dist / "index.html").exists(),
@@ -110,7 +115,16 @@ class App:
             "eod": eod,
             "documents": {"eligible": [self._ver_public(v) for v in eligible], "excluded": [self._ver_public(v) for v in excluded]},
             "coverage": attempts,
+            "freshness": self._source_freshness(cid, eligible),
         }
+
+    def _source_freshness(self, company_id: str, versions: List[Dict]) -> Dict[str, Any]:
+        attempt = self.store.query_one("SELECT state,finished_at FROM fetch_attempts WHERE company_id=? "
+                                       "AND source_kind IN ('nse_announcements','nse_annual_report_index') ORDER BY finished_at DESC LIMIT 1", (company_id,))
+        return {"latest_publication": max((v.get("published_at") or "" for v in versions), default=None) or None,
+                "last_checked": attempt["finished_at"] if attempt else None,
+                "state": attempt["state"] if attempt else "not_checked",
+                "note": "Stored evidence; a current research request checks primary sources explicitly. A source-check time is not a document publication date."}
 
     def coverage(self) -> Dict[str, Any]:
         rows = self.store.query("SELECT * FROM fetch_attempts ORDER BY started_at DESC LIMIT 300")
@@ -343,18 +357,21 @@ class App:
             return self._submit_research(req)
 
     def _research_key(self, req: ResearchRequest, company_id: str) -> str:
-        cfg = self.replay
+        cfg = self.replay if req.mode == "replay" else None
         eligible, _ = classify_versions(self.store, company_id, req.mode, cfg.cutoff_utc if cfg else None)
         return sha256_bytes(json.dumps([req.symbol, req.question, req.event_id, req.mode, cfg.cutoff_utc if cfg else None,
                                       sorted((v["version_id"], v["parser_version"]) for v in eligible), self.settings.model_configured,
-                                      self.settings.model_provider, self.settings.model_primary, PROMPT_VERSION]).encode())
+                                      self.settings.model_provider, self.settings.model_primary, PROMPT_VERSION,
+                                      RESEARCH_PIPELINE_VERSION, int(time.time() // SOURCE_REFRESH_CACHE_S) if req.mode == "live" else None]).encode())
 
     def _submit_research(self, req: ResearchRequest) -> Dict[str, Any]:
         symbol = req.symbol.strip().upper()
         req = req.model_copy(update={"symbol": symbol})
         company = self.company(symbol)  # raises NotFound for unknown symbols before queuing
-        if req.mode == "live":
-            raise NotFound("live_not_available", "Live research is not part of Milestone 1; use historical replay.")
+        if req.event_id:
+            event = self.store.query_one("SELECT company_id FROM announcements WHERE announcement_id=?", (req.event_id,))
+            if not event or event["company_id"] != company["company_id"]:
+                raise NotFound("invalid_event", "This filing is not available for the selected company. Open the company and choose a stored filing.")
         # Discovery changes the corpus while a job runs. Deduplicate its input
         # independently of that evolving fingerprint before looking up caches.
         for pending in self.store.query("SELECT job_id,request FROM jobs WHERE state IN ('queued','running')"):
@@ -400,7 +417,8 @@ class App:
         for row in self.store.query("SELECT job_id,state,result FROM jobs WHERE result IS NOT NULL AND state IN ('completed','partial') ORDER BY updated_at DESC,rowid DESC LIMIT 100"):
             result = json.loads(row["result"])
             company = result.get("company") or {}
-            if result.get("generation", {}).get("status") != "generated":
+            kind = "ai_brief" if result.get("generation", {}).get("status") == "generated" else "source_brief"
+            if kind == "source_brief" and not (result.get("source_brief") or {}).get("highlights"):
                 continue
             if symbol and company.get("symbol") != symbol.strip().upper():
                 continue
@@ -408,6 +426,7 @@ class App:
                           "symbol": company.get("symbol"), "legal_name": company.get("legal_name"),
                           "question": result.get("question"), "event_id": (result.get("event") or {}).get("announcement_id"),
                           "mode": result.get("mode"), "generated_at": result.get("generated_at"),
+                          "kind": kind, "provider": result.get("generation", {}).get("model"),
                           "document_count": len(result.get("eligible_version_ids") or [])})
         return {"items": items}
 
@@ -432,22 +451,32 @@ class App:
             company = nse.resolve_company(self.store, req.symbol)
             discovery = {}
             cutoff = self.replay.cutoff_utc if self.replay and req.mode == "replay" else utcnow()
+            event_issue = self._read_selected_filing(company, req.event_id, cutoff, progress) if req.event_id else None
             eligible, _ = classify_versions(self.store, company.company_id, req.mode, cutoff)
-            if not {"annual_report", "earnings_call_transcript"} <= {v["doc_type"] for v in eligible}:
+            recent_discovery = self._recent_source_check(req.symbol) if req.mode == "live" else None
+            if (req.mode == "live" and recent_discovery is None) or not {"annual_report", "earnings_call_transcript"} <= {v["doc_type"] for v in eligible}:
                 fetcher = self.fetcher_factory()
                 try:
                     discovery = discover_company_sources(self.store, fetcher, self.settings, company, cutoff,
-                                                         progress, t0 + self.settings.research_deadline_s - 15)
+                                                         progress, t0 + self.settings.research_deadline_s - 15,
+                                                         refresh=req.mode == "live")
                 finally:
                     fetcher.close()
                 # The completed result must use the discovered corpus key, or
                 # opening it again would unnecessarily create a second model job.
                 self.store.execute("UPDATE jobs SET idempotency_key=? WHERE job_id=?",
                                    (self._research_key(req, company.company_id), job_id))
+            elif recent_discovery:
+                discovery = {**recent_discovery, "cached": True,
+                             "cache_note": "Reused the last primary-source check within 15 minutes; the question was retrieved separately."}
+            self.store.execute("UPDATE jobs SET idempotency_key=? WHERE job_id=?",
+                               (self._research_key(req, company.company_id), job_id))
             state, output = run_research(self.store, self.settings, self.replay, company, req, self.client, job_id, progress)
             output.discovery = discovery
             for issue in discovery.get("issues", []):
                 output.evidence_gaps.append(Gap(kind="coverage", text=issue))
+            if event_issue:
+                output.evidence_gaps.append(Gap(kind="coverage", text=event_issue))
             stages[-1]["finished_at"] = utcnow()
             self.store.execute("UPDATE jobs SET state=?, stage='done', stages=?, result=?, updated_at=? WHERE job_id=?",
                                (state, json.dumps(stages), output.model_dump_json(), utcnow(), job_id))
@@ -456,6 +485,59 @@ class App:
                 stages[-1]["finished_at"] = utcnow()
             self.store.execute("UPDATE jobs SET state='failed', stages=?, error=?, updated_at=? WHERE job_id=?",
                                (json.dumps(stages), f"{exc.__class__.__name__}: {exc}", utcnow(), job_id))
+
+    def _read_selected_filing(self, company, event_id: str, cutoff: str, progress) -> Optional[str]:
+        """Download only the filing deliberately selected by the user, never on page open."""
+        row = self.store.query_one("SELECT * FROM announcements WHERE announcement_id=? AND company_id=?", (event_id, company.company_id))
+        if not row or row.get("attachment_version_id"):
+            return None
+        if not row.get("attachment_url") or not row.get("published_at"):
+            return "The selected filing has no dated attachment to retrieve; its exchange metadata remains available."
+        if datetime.fromisoformat(row["published_at"]) > datetime.fromisoformat(cutoff):
+            return "The selected filing was published after the chosen source cutoff and was excluded."
+        progress("downloading_sources")
+        spec = {"url": row["attachment_url"], "doc_type": "exchange_filing",
+                "_published_at": row["published_at"], "_precision": "second",
+                "_availability_evidence": [{"method": "exchange_announcement", "source_url": row["source_url"],
+                    "source_hash": row.get("source_hash"), "matched_record": json.loads(row["raw_json"]),
+                    "note": "Dated exchange record listing this exact selected attachment."}]}
+        fetcher = self.fetcher_factory()
+        try:
+            result = documents.ingest_document(self.store, fetcher, company, spec, max_pages=self.settings.max_pdf_pages)
+            if result.get("version_id"):
+                self.store.execute("UPDATE announcements SET attachment_version_id=?,attachment_state=? WHERE announcement_id=?",
+                                   (result["version_id"], result["state"], event_id))
+        finally:
+            fetcher.close()
+        linked = self.store.query_one("SELECT attachment_version_id FROM announcements WHERE announcement_id=?", (event_id,))
+        eligible, _ = classify_versions(self.store, company.company_id, "replay", cutoff)
+        if (result.get("state") != "fetched" or not linked or not linked["attachment_version_id"] or
+                linked["attachment_version_id"] not in {v["version_id"] for v in eligible}):
+            return "The selected filing could not be read and linked to this company; inspect the original exchange attachment."
+        return None
+
+    def _recent_source_check(self, symbol: str) -> Optional[Dict[str, Any]]:
+        from .discovery import DISCOVERY_VERSION
+        for row in self.store.query("SELECT request,result FROM jobs WHERE result IS NOT NULL ORDER BY updated_at DESC LIMIT 100"):
+            request = json.loads(row["request"])
+            if request.get("symbol") != symbol or request.get("mode") != "live":
+                continue
+            discovery = json.loads(row["result"]).get("discovery") or {}
+            if discovery.get("version") != DISCOVERY_VERSION:
+                continue
+            stamp = discovery.get("finished_at")
+            if stamp and 0 <= (datetime.now(IST) - datetime.fromisoformat(stamp)).total_seconds() < SOURCE_REFRESH_CACHE_S:
+                return discovery
+        return None
+
+    def refresh_current_portfolio(self, days: int = 7) -> Dict[str, Any]:
+        from .current import refresh_portfolio_sources
+        if not self._current_refresh_lock.acquire(blocking=False):
+            raise NotFound("refresh_running", "A filing check is already running. Try the review again shortly.")
+        try:
+            return refresh_portfolio_sources(self.store, self.settings, self.portfolio.get("symbols", []), self.fetcher_factory, days)
+        finally:
+            self._current_refresh_lock.release()
 
     def _worker(self) -> None:
         while True:
@@ -492,6 +574,10 @@ class App:
                 raise ValueError(f"Stored replay coverage is {cfg.filing_from} to {cfg.filing_to}; choose dates inside it.")
         elif window in ("24h", "7d"):
             start = end - timedelta(days=1 if window == "24h" else 7) + timedelta(seconds=1)
+            if mode == "live" and window == "7d":
+                # The explicit seven-day exchange check uses seven IST calendar
+                # dates. Do not imply it also covered an earlier partial eighth day.
+                start = (end - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
             if earliest:
                 start = max(start, earliest)
         elif window == "all":
@@ -505,6 +591,11 @@ class App:
         min_base = int(defaults.get("min_baseline_sessions", 5))
 
         companies, checked, with_events, flagged = [], 0, 0, 0
+        current_report = {}
+        if mode == "live":
+            from .current import read_refresh_report
+            current_report = read_refresh_report(self.settings) or {}
+        current_rows = {r["symbol"]: r for r in current_report.get("companies", [])}
         for symbol in self.portfolio.get("symbols", []):
             try:
                 c = nse.resolve_company(self.store, symbol)
@@ -526,6 +617,10 @@ class App:
             eod_q += " AND trading_date<=?"
             params += (end.date().isoformat(),)
             eod = self.store.query(eod_q + " ORDER BY trading_date", params)
+            if mode == "live" and eod and (end.date() - datetime.fromisoformat(eod[-1]["trading_date"]).date()).days > 7:
+                # Historical cached prices must not create a current-day alert. The
+                # separately labelled Yahoo market snapshot remains available in the UI.
+                eod = []
 
             leading, notable, routine = [], [], []
             for a in anns:
@@ -544,20 +639,31 @@ class App:
             anomaly = eod_anomaly(eod, pmp, vmul, base, min_base) if eod else None
 
             has_data = bool(anns or eod or docs)
-            if has_data:
+            current_row = current_rows.get(c.symbol, {})
+            current_ok = current_row.get("state") == "fetched"
+            stamp = current_row.get("checked_at") or current_report.get("finished_at")
+            if mode == "live" and stamp:
+                try:
+                    current_ok = current_ok and 0 <= (datetime.now(IST) - datetime.fromisoformat(stamp)).total_seconds() < SOURCE_REFRESH_CACHE_S
+                except (TypeError, ValueError):
+                    current_ok = False
+            if (has_data if mode == "replay" else current_ok):
                 checked += 1
             if leading or notable:
                 with_events += 1
             if anomaly and anomaly["flagged"]:
                 flagged += 1
             companies.append({
-                "symbol": c.symbol, "legal_name": c.legal_name, "status": "ok" if has_data else "no_data",
+                "symbol": c.symbol, "legal_name": c.legal_name, "status": "ok" if has_data or current_ok else "no_data",
                 "coverage": {"identity": True, "announcements": len(anns), "eod": len(eod), "documents": len(docs)},
                 "leading_events": sorted(leading, key=lambda x: x.get("published_at") or "", reverse=True),
                 "notable_events": sorted(notable, key=lambda x: x.get("published_at") or "", reverse=True),
                 "routine_count": len(routine), "routine_events": routine,
                 "eod_anomaly": anomaly,
                 "can_research": bool(docs),
+                "freshness": {"state": "stale" if current_row.get("state") == "fetched" and not current_ok else current_row.get("state", "not_checked"),
+                              "last_checked": current_report.get("finished_at") if current_row else None,
+                              "note": current_row.get("error") or ("Exchange metadata checked; filing PDFs open at the original source." if current_ok else "Current filings have not been verified; stored sources do not establish a quiet period.")},
             })
         # Leading companies first, then by number of leading events.
         order = {"ok": 0, "no_data": 1, "unresolved": 2}
@@ -573,6 +679,7 @@ class App:
             "summary": {"companies": len(companies), "checked": checked,
                         "with_events": with_events, "price_volume_flagged": flagged},
             "companies": companies,
+            "refresh": current_report or None,
         }
 
     # ------------------------------------------------------------ live EOD (free Yahoo chart API)

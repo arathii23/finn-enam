@@ -1,5 +1,10 @@
 # FINN — detailed Claude Code continuation prompt
 
+> For the current post-submission publishing task, use
+> [the 4 November handoff](CLAUDE_CODE_PUBLISH_HANDOFF_2026_11_04.md).
+> This 3 November document is historical; its publication approval gates and unfinished-feature
+> list have been superseded by later user authorization and implementation.
+
 Prepared 3 November 2026 (IST). This is a continuation of the existing working tree, not a new build.
 The user confirmed that ENAM has granted a deadline extension; the revised due date was not supplied.
 This document supersedes current-state claims in the older GPT handoff, deployment proposal and

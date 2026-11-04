@@ -41,11 +41,13 @@ class Settings:
     api_budget_usd: float
     job_budget_usd: float
     research_deadline_s: int
-    model_provider: str = "openai"
+    model_provider: str = "keyless"
     anthropic_api_key: Optional[str] = None
     anthropic_base_url: str = "https://api.anthropic.com/v1"
     gemini_api_key: Optional[str] = None
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+    groq_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
 
     @property
     def db_path(self) -> Path:
@@ -57,12 +59,16 @@ class Settings:
 
     @property
     def model_configured(self) -> bool:
-        key = {"anthropic": self.anthropic_api_key, "gemini": self.gemini_api_key}.get(self.model_provider, self.openai_api_key)
-        return bool(key)
+        key = {"openai": self.openai_api_key, "anthropic": self.anthropic_api_key,
+               "gemini": self.gemini_api_key, "groq": self.groq_api_key,
+               "openrouter": self.openrouter_api_key}.get(self.model_provider)
+        return bool(key and key.strip())
 
     @property
     def model_api_key_env(self) -> str:
-        return {"anthropic": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY"}.get(self.model_provider, "OPENAI_API_KEY")
+        return {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY",
+                "gemini": "GEMINI_API_KEY", "groq": "GROQ_API_KEY",
+                "openrouter": "OPENROUTER_API_KEY"}.get(self.model_provider, "no model key (keyless mode)")
 
 
 def get_settings() -> Settings:
@@ -70,15 +76,17 @@ def get_settings() -> Settings:
     # Existing environment settings take precedence. Secret values are not logged.
     load_dotenv(REPO_ROOT / ".env", override=False)
     gemini_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or None
-    provider = (os.environ.get("FINN_MODEL_PROVIDER") or
-                ("anthropic" if os.environ.get("ANTHROPIC_API_KEY")
-                 else "gemini" if gemini_key else "openai")).lower()
-    if provider not in ("openai", "anthropic", "gemini"):
-        raise ValueError("FINN_MODEL_PROVIDER must be openai, anthropic or gemini")
+    # A credential left in a shell or an older .env is not permission to use it.
+    # Model synthesis is explicitly selected; otherwise the source brief is the floor.
+    provider = (os.environ.get("FINN_MODEL_PROVIDER") or "keyless").strip().lower()
+    if provider not in ("keyless", "openai", "anthropic", "gemini", "groq", "openrouter"):
+        raise ValueError("FINN_MODEL_PROVIDER must be keyless, openai, anthropic, gemini, groq or openrouter")
     # Gemini's free tier (Google AI Studio) gives genuine synthesis at zero cost; its
     # OpenAI-compatible endpoint lets us reuse the same JSON-schema research contract.
-    primary = {"anthropic": "claude-haiku-5-5", "gemini": "gemini-2.0-flash"}.get(provider, "gpt-6-luna")
-    escalation = {"anthropic": "claude-sonnet-5-5", "gemini": "gemini-2.5-flash"}.get(provider, "gpt-6.1-sol")
+    primary = {"keyless": "", "anthropic": "claude-haiku-5-5", "gemini": "gemini-2.5-flash",
+               "groq": "openai/gpt-oss-20b", "openrouter": "openrouter/free"}.get(provider, "gpt-6-luna")
+    escalation = {"keyless": "", "anthropic": "claude-sonnet-5-5", "gemini": "gemini-2.5-flash",
+                  "groq": "", "openrouter": ""}.get(provider, "gpt-6.1-sol")
     data_dir = Path(os.environ.get("FINN_DATA_DIR", REPO_ROOT / "data")).resolve()
     return Settings(
         data_dir=data_dir,
@@ -107,6 +115,8 @@ def get_settings() -> Settings:
         anthropic_base_url=_anthropic_base_url(),
         gemini_api_key=gemini_key,
         gemini_base_url=os.environ.get("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai"),
+        groq_api_key=os.environ.get("GROQ_API_KEY") or None,
+        openrouter_api_key=os.environ.get("OPENROUTER_API_KEY") or None,
     )
 
 

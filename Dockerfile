@@ -1,7 +1,7 @@
 # Single-service backend: Vite build -> FastAPI serves the API + React app on one origin.
 # Self-contained and disk-free: the verified corpus (gitignored locally) is downloaded from the
 # repo's public GitHub Release at build time, so this runs on a free host with no persistent disk
-# (e.g. Render free). Defaults to the free Gemini provider; runs keyless if GEMINI_API_KEY is unset.
+# (e.g. Render free). Keyless by default; an operator may explicitly select an optional provider.
 ARG SEED_URL=https://github.com/arathii23/finn-enam/releases/download/corpus-2026-11-03/finn-seed.tar.gz
 
 FROM node:22-slim AS web
@@ -15,7 +15,7 @@ FROM python:3.12-slim
 ARG SEED_URL
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     FINN_DATA_DIR=/app/data FINN_FRONTEND_DIST=/app/frontend/dist \
-    FINN_MODEL_PROVIDER=gemini
+    FINN_MODEL_PROVIDER=keyless
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

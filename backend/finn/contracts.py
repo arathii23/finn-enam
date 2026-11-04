@@ -149,7 +149,7 @@ class SectionResult(BaseModel):
 
 
 class Gap(BaseModel):
-    kind: Literal["coverage", "model", "validation", "generated"]
+    kind: Literal["coverage", "model", "validation", "generated", "question"]
     text: str
     evidence_ids: List[str] = Field(default_factory=list)
 
@@ -163,6 +163,7 @@ class BriefItem(BaseModel):
     period_label: Optional[str] = None
     evidence_id: str
     page_index: int
+    context_evidence_ids: List[str] = Field(default_factory=list)
 
 
 class SourceBrief(BaseModel):
