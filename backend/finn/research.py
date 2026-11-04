@@ -16,7 +16,7 @@ from .contracts import (Announcement, Claim, Company, FollowUp, Gap, GenerationI
 from .db import Store, new_id, sha256_bytes, utcnow
 from .llm import BudgetExceeded, ModelUnavailable, ResponsesClient
 from .replay import ReplayConfig, classify_versions
-from .retrieval import retrieve_section
+from .retrieval import retrieve_section, unsupported_terms
 
 DOC_LABEL = {"annual_report": "Annual report", "earnings_call_transcript": "Earnings-call transcript",
              "exchange_filing": "Exchange filing"}
@@ -191,18 +191,27 @@ def run_research(store: Store, settings: Settings, cfg: Optional[ReplayConfig], 
             event_versions = [row["attachment_version_id"]] if row.get("attachment_version_id") else []
 
     progress("reading_sources")
+    # Which question words appear in no eligible document at all. Those cannot be answered from the
+    # sources, so retrieval requires stronger overlap (or abstains) and the gap is named below.
+    missing_terms = unsupported_terms(store, eligible, req.question)
     sections = {
-        "business_context": retrieve_section(store, "business_context", eligible, req.question),
-        "management_commentary": retrieve_section(store, "management_commentary", eligible, req.question),
+        "business_context": retrieve_section(store, "business_context", eligible, req.question, unsupported=missing_terms),
+        "management_commentary": retrieve_section(store, "management_commentary", eligible, req.question, unsupported=missing_terms),
     }
     if event is not None or (req.question and any(v["doc_type"] == "exchange_filing" for v in eligible)):
-        sections["event_filing"] = retrieve_section(store, "event_filing", eligible, req.question, restrict_version_ids=event_versions or [])
+        sections["event_filing"] = retrieve_section(store, "event_filing", eligible, req.question,
+                                                    restrict_version_ids=event_versions or [], unsupported=missing_terms)
         if event is None:
-            sections["event_filing"] = retrieve_section(store, "event_filing", eligible, req.question)
+            sections["event_filing"] = retrieve_section(store, "event_filing", eligible, req.question, unsupported=missing_terms)
     packet = {p["passage_id"]: p for ps in sections.values() for p in ps}
     fingerprint = sha256_bytes(json.dumps(sorted(v["version_id"] for v in eligible)).encode())[:16]
 
     gaps = coverage_gaps(eligible, excluded, req.mode)
+    if missing_terms:
+        gaps.insert(0, Gap(kind="question", text=(
+            "None of this company's stored primary sources mention: " + ", ".join(missing_terms) + ". "
+            + ("Any extracts shown match only the other words in your question." if packet
+               else "No extracts are shown, because nothing in the sources answers this question."))))
     if event is not None and not event_versions:
         gaps.append(Gap(kind="coverage", text="The selected event's attachment has not been retrieved; only its exchange metadata is available."))
     removed: List[Dict[str, Any]] = []

@@ -483,8 +483,15 @@ class App:
         except Exception as exc:  # noqa: BLE001 - job failures are reported, never hidden
             if stages:
                 stages[-1]["finished_at"] = utcnow()
+            message = f"{exc.__class__.__name__}: {exc}"
+            if isinstance(exc, TimeoutError) and str(exc).startswith("research deadline"):
+                # Reading a company's large documents can exceed the limit on a small host. Documents
+                # already read are stored, so a retry resumes rather than starting over.
+                message = ("Reading this company's source documents took longer than the "
+                           f"{self.settings.research_deadline_s}-second limit on this host. Documents read so far "
+                           "are saved, so choose Retry to continue from where it stopped.")
             self.store.execute("UPDATE jobs SET state='failed', stages=?, error=?, updated_at=? WHERE job_id=?",
-                               (json.dumps(stages), f"{exc.__class__.__name__}: {exc}", utcnow(), job_id))
+                               (json.dumps(stages), message, utcnow(), job_id))
 
     def _read_selected_filing(self, company, event_id: str, cutoff: str, progress) -> Optional[str]:
         """Download only the filing deliberately selected by the user, never on page open."""

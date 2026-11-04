@@ -25,6 +25,12 @@ _NUM = re.compile(r"\d")
 # Conditions/qualifiers whose preceding or following sentence carries the real caveat.
 _QUALIFIER = re.compile(r"\b(but|however|subject to|provided|expect|guidance|target|assuming|"
                         r"excluding|including|caveat|barring|depend|assumptions?|assumes?|offset|headwinds?|tailwinds?)\b", re.I)
+# Call-opening greetings and hand-overs are transcript boilerplate, not evidence. A quote is
+# dropped only when it STARTS with such a phrase, so substantive sentences are unaffected.
+_PLEASANTRY = re.compile(
+    r"^\W*(welcome\b|good\s+(?:morning|afternoon|evening)\b|(?:thank\s+you|thanks)\s+(?:all\s+)?for\s+joining\b|"
+    r"(?:i|we)\s+(?:now\s+)?(?:would\s+like\s+to\s+)?(?:hand|turn)\s+(?:it\s+|the\s+(?:call|floor|conference)\s+)?over\b|"
+    r"over\s+to\s+you\b)", re.I)
 _SECTION_ORDER = ["event_filing", "business_context", "management_commentary"]
 _SECTION_LABEL = {"event_filing": "exchange filing", "business_context": "annual report",
                   "management_commentary": "earnings-call transcript"}
@@ -104,7 +110,11 @@ def build_source_brief(sections: Dict[str, List[Dict]], question: Optional[str])
     doc_counts: Dict[str, int] = {}
     seen = set()
     quoted_sources = []
-    management_focus = bool({"guidance", "guided", "outlook", "forecast", "assumptions", "conditions", "demand"}.intersection(terms))
+    # "management" is a search stopword, but asking what management said is a request for
+    # management's own statements first, not for an annual-report note that shares a keyword.
+    asked_management = bool(re.search(r"\b(management|said|says?|told|commentary|ceo|cfo)\b", (question or "").lower()))
+    management_focus = asked_management or bool(
+        {"guidance", "guided", "outlook", "forecast", "assumptions", "conditions", "demand"}.intersection(terms))
     section_order = (["management_commentary", "business_context", "event_filing"] if management_focus else _SECTION_ORDER)
     for name in section_order:
         passages = sections.get(name) or []
@@ -119,7 +129,7 @@ def build_source_brief(sections: Dict[str, List[Dict]], question: Optional[str])
             if p["passage_id"] in context_ids or p.get("_context_for"):
                 continue  # context is shown with its anchor, never as an incomplete standalone answer
             quote = _select_quote(p.get("text") or "", terms, vocab, want_numbers)
-            if quote:
+            if quote and not _PLEASANTRY.match(quote):
                 candidates.append((p, quote))
         if terms:
             # Rank the selected statement, not the entire surrounding passage.

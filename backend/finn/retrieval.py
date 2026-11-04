@@ -103,6 +103,49 @@ def topic_matches(text: str, terms: Sequence[str]) -> int:
 
 
 
+def unsupported_terms(store: Store, versions: Sequence[Dict], question: Optional[str]) -> List[str]:
+    """Question terms that appear in NO eligible document (stemmed full-text check).
+
+    A term absent from every stored source cannot be answered from them. Checking the whole
+    eligible set (not just the passages already ranked) distinguishes "this topic is not in the
+    sources" from "this topic is thinly covered", so loosely related text is not shown as an answer.
+    """
+    terms = question_terms(question)
+    ids = [v["version_id"] for v in versions]
+    if not terms or not ids:
+        return []
+    placeholders = ",".join("?" * len(ids))
+    missing: List[str] = []
+    for term in terms:
+        query = _fts_query(TERM_ALIASES.get(term, [term]))
+        if not query:
+            continue
+        hit = store.query_one(
+            f"SELECT 1 AS hit FROM passages_fts WHERE passages_fts MATCH ? AND version_id IN ({placeholders}) LIMIT 1",
+            (query, *ids))
+        if not hit:
+            missing.append(term)
+    return missing
+
+
+def _topic_need(terms: Sequence[str], unsupported: Sequence[str]) -> Optional[int]:
+    """Minimum question terms a passage must match, or None when the sources cannot answer.
+
+    Nothing unsupported: one matching term is enough (previous behaviour). If at least two
+    terms are absent from every source and they make up half or more of the question, the
+    question is mostly about things the sources never mention: abstain. Otherwise, with some
+    terms missing, a lone generic word is not enough: require two matching terms.
+    """
+    missing = set(unsupported)
+    unsupported_count = sum(1 for t in terms if t in missing)
+    supported = len(terms) - unsupported_count
+    if unsupported_count == 0:
+        return 1
+    if unsupported_count >= 2 and unsupported_count * 2 >= len(terms):
+        return None
+    return 2 if (supported >= 2 and len(terms) >= 3) else 1
+
+
 def _same_speaker_context(store: Store, version_id: str, page_index: int, seq: int,
                           speaker: Optional[str], have: set) -> List[Dict]:
     """Return up to CONTEXT_NEIGHBOURS passages immediately preceding (version order),
@@ -157,7 +200,8 @@ def _following_qualification(store: Store, version_id: str, page_index: int, seq
 
 
 def retrieve_section(store: Store, section: str, versions: List[Dict], question: Optional[str] = None,
-                     restrict_version_ids: Optional[List[str]] = None) -> List[Dict]:
+                     restrict_version_ids: Optional[List[str]] = None,
+                     unsupported: Optional[Sequence[str]] = None) -> List[Dict]:
     vocab = SECTION_VOCAB[section]
     pool = [v for v in versions if v["doc_type"] in vocab["doc_types"]]
     if restrict_version_ids is not None:
@@ -168,6 +212,9 @@ def retrieve_section(store: Store, section: str, versions: List[Dict], question:
     pool.sort(key=lambda v: v.get("published_at") or "", reverse=True)
     limit = vocab["limit"]
     terms = question_terms(question)
+    need = _topic_need(terms, unsupported or []) if terms else 1
+    if need is None:
+        return []  # the stored sources cannot answer this question; show no loosely related text
     if terms:
         # Search the actual question across a bounded history. Generic business vocabulary
         # must not outrank a debt/attrition/etc. question, or pretend an unsupported topic matched.
@@ -211,7 +258,7 @@ def retrieve_section(store: Store, section: str, versions: List[Dict], question:
             defining = re.compile(r"principal\s+(?:business|activit)|business\s+(?:activit|segments)", re.I)
             rows.sort(key=lambda r: not bool(defining.search(r["text"])))
         if terms:
-            rows = [r for r in rows if topic_matches(r["text"], terms)]
+            rows = [r for r in rows if topic_matches(r["text"], terms) >= need]
             rows.sort(key=lambda r: (-topic_matches(r["text"], terms), r["score"]))
         selected_ids = {r["passage_id"] for r in out}
 
