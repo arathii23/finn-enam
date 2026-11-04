@@ -9,6 +9,7 @@ The assessment requires the actual coding conversations, not a reconstruction. P
 | M3 management profiles + M4 local polish (31 Oct 2026) | Codex desktop, this chat | Authentic chat must be exported/shared and evaluator access checked; no share link fabricated |
 | Financial trust/workflow pass and keyless Claude Code handoff (3 Nov 2026) | Codex desktop, this chat | Preserve the authentic chat; detailed continuation instructions are in `HANDOFF_CLAUDE_CODE.md`, not a replacement conversation export |
 | Post-submission practical workflow improvements (4 Nov 2026) | Codex desktop, this chat | Preserve this authentic continuation; `POST_SUBMISSION_IMPROVEMENTS.md` records changes and checks, not a substitute conversation export |
+| Post-submission publication and hosted verification (4 Nov 2026) | Claude Code (Sonnet 5.5), desktop session | This continuation is an authentic Claude Code session; export or share it separately. It is not part of the submitted `FINN_AI_Build_History_Complete.pdf` and no summary here replaces it. Results: `docs/POST_SUBMISSION_IMPROVEMENTS.md`. |
 
 4 November supplementary status: the user reports the assessment already submitted. Work in this
 continuation improves the local app and keeps the submitted links unchanged until a later publish.
@@ -103,3 +104,20 @@ Supplementary implementation/verification record, not a reconstruction of the co
 Source-bound deterministic output snapshots live in ignored `data/verification/m3_management_*.json`;
 browser screenshots/layout observations are in `docs/m3_m4_ui_check/`. Preserve the actual Codex chat,
 all prior Claude records and the ignored source corpus for the eventual submission package.
+
+## Post-submission publication and hosted verification — 4 November 2026 (Claude Code)
+
+Scope: publish the reviewed local improvements to the existing GitHub Pages and Render links and
+verify them from the public network. Nothing was resubmitted and no email was sent.
+
+- Backed up the main SQLite store with the SQLite backup API; re-ran the suite (210 passed) and both
+  builds; scanned the 52 files to commit for credentials (none) and excluded `output/`, `tmp/`, `data/`.
+- Pushed `14ccc78` to `main`; Render auto-deployed. Hosted verification then found and fixed five
+  defects (abstention on unsupported topics, management-first ordering, call-opening greetings, a raw
+  timeout message, an unexplained dash), pushed as `d8f8592` and `89d979f`, and re-verified them on the
+  public app.
+- Published the static demo to `gh-pages` as fast-forward commits (`95e76d7`, then `619eed8`); rollback
+  references `main` `472813c` and `gh-pages` `d1b5bc1`.
+- Measured and recorded that the price-feed schedule runs hours apart rather than every five minutes.
+- Final published revisions and the checks actually performed are in `BUILD_STATUS.md` and
+  `docs/POST_SUBMISSION_IMPROVEMENTS.md`.

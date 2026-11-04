@@ -111,3 +111,29 @@ Static research actions open a prefilled company/question in the live app; openi
 does not submit it. The static site and live app have separate browser notebooks. Current jobs
 and source-check caches on Render's ephemeral disk can disappear on restart; exported notebook
 notes retain their original primary-source URLs and evidence locators.
+
+## Published state and how it was published (4 November 2026)
+
+- **Static demo:** https://arathii23.github.io/finn-enam/ is served from the `gh-pages` branch. The
+  existing mechanism is a manual publication: export the snapshot from the production seed in
+  keyless mode, build to a separate directory with the `/finn-enam/` base, then add it as a normal
+  commit on top of `origin/gh-pages` (no force push). Rollback means checking out the previous
+  `gh-pages` commit (`d1b5bc1` before the 4 November update).
+
+  ```bash
+  env FINN_MODEL_PROVIDER=keyless OPENAI_API_KEY='' ANTHROPIC_API_KEY='' GEMINI_API_KEY='' \
+    GROQ_API_KEY='' OPENROUTER_API_KEY='' PYTHONPATH=backend .venv/bin/python -m finn export-static
+  cd frontend && VITE_STATIC=1 VITE_LIVE_APP_URL=https://finn-mow9.onrender.com \
+    VITE_LIVE_PRICES_URL=https://raw.githubusercontent.com/arathii23/finn-enam/live-data/live_prices.json \
+    npm run build -- --base=/finn-enam/ --outDir ../tmp/finn-pages-release
+  ```
+
+  The production seed is `data/finn.sqlite3`. Never publish a QA database, `.env`, notebook exports
+  or private conversation files.
+- **Price feed cadence is best-effort.** The workflow is scheduled every five minutes, but GitHub
+  throttles scheduled runs on low-activity repositories. Observed runs on 3 to 4 November were hours
+  apart (19:51Z, 00:18Z, 06:43Z), so "refreshes every five minutes" is not a measured behaviour.
+  The page always shows the feed's own "checked / last updated" time and each row's real trading
+  date, which is the honest signal. A manual run is available with `gh workflow run live-prices.yml`.
+  A recent check does not mean a new market session, and a missing previous session leaves the daily
+  change blank rather than computing a multi-day move.
