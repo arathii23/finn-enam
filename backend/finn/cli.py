@@ -109,7 +109,7 @@ def cmd_export_static(args) -> int:
     from .snapshot import export_static
     s = get_settings()
     if s.model_configured:
-        print("Refusing to export: unset OPENAI_API_KEY / ANTHROPIC_API_KEY so the snapshot is model-free.")
+        print("Refusing to export: select FINN_MODEL_PROVIDER=keyless so the snapshot is model-free.")
         return 2
     app = App(s, start_worker=False)
     out = Path(args.out).resolve()

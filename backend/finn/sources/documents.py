@@ -25,6 +25,7 @@ TYPE_TERMS = {
 }
 SPEAKER_RE = re.compile(r"^\s*([A-Z][A-Za-z.'\-]+(?: [A-Z][A-Za-z.'\-]+){0,4})\s*:\s+", re.M)
 CHUNK_CHARS = 1400
+TRANSCRIPT_CHECK_VERSION = "dialogue-and-bundled-titles-v2"
 NAME_LINE_RE = re.compile(r"[A-Z][A-Za-z.'\-]+(?:[ \t]+[A-Z][A-Za-z.'\-]+){1,4}")
 ROLE_WORDS = {"chief", "officer", "head", "executive", "director", "financial", "corporate",
               "participants", "analysts", "journalists", "conference", "call", "external", "document",
@@ -175,6 +176,15 @@ def infer_reporting_period(pages: List[str], doc_type: str) -> Dict[str, Any]:
     """Read an explicit header period; never derive it from a file/call date."""
     headers = "\n".join(p[:2500] for p in pages[:2]).replace("’", "'").replace("–", "-")
     if doc_type == "earnings_call_transcript":
+        # Exchange PDFs may bundle a media call before the titled earnings
+        # call. Accept an explicit, short call-title line later in the bundle;
+        # ordinary dialogue, URLs and call dates do not establish its period.
+        titles = [line.strip() for page in pages for line in page[:2500].splitlines()
+                  if len(line.strip()) <= 180 and re.match(
+                      r"^(?:Q[1-4](?:\s|FY|&)|(?:earnings|conference)\s+call\b)", line.strip(), re.I)
+                  and re.search(
+                      r"\b(?:earnings|conference)\s+call\b|\bcall\s+transcript\b", line, re.I)]
+        headers += "\n" + "\n".join(titles).replace("’", "'").replace("–", "-")
         found = re.findall(r"\bQ([1-4])\s*(&\s*9M\s*)?FY\s*'?\s*(20\d{2}|\d{2})(?:\s*[-/]\s*(20\d{2}|\d{2}))?\b", headers, re.I)
         periods = set()
         for quarter, ytd, first, last in found:
@@ -189,7 +199,7 @@ def infer_reporting_period(pages: List[str], doc_type: str) -> Dict[str, Any]:
         scope = f"Q{q} & 9M" if with_ytd else f"Q{q}"
         return {"period_label": f"{scope} FY{fy_end-1}-{str(fy_end)[-2:]}",
                 "period_scope": "quarter and nine months" if with_ytd else "quarter",
-                "period_inference": "explicit Q/FY title/header; exact calendar dates not inferred"}
+                "period_inference": "explicit Q/FY title/header, including titled call sections; exact calendar dates not inferred"}
     if doc_type == "annual_report":
         found = re.findall(r"(?:annual\s+report|integrated\s+report)[\s\S]{0,60}?\b(20\d{2})\s*-\s*(20\d{2}|\d{2})\b", headers, re.I)
         periods = {(int(a), int(b) if len(b) == 4 else 2000 + int(b)) for a, b in found}
@@ -396,7 +406,11 @@ def ingest_document(store: Store, fetcher: Fetcher, company: Company, spec: Dict
             published_at, precision = existing["published_at"], existing["published_precision"]
             evidence = [AvailabilityEvidence(**e) for e in json.loads(existing["availability_evidence"])]
 
+    transcript_recheck = (spec.get("_discovered") and doc_type == "earnings_call_transcript" and existing
+                          and not json.loads(existing["identification"]).get("identity_ok")
+                          and json.loads(existing["identification"]).get("transcript_check_version") != TRANSCRIPT_CHECK_VERSION)
     if (existing and existing["parser_version"] == PARSER_VERSION and existing["doc_type"] == doc_type
+            and not transcript_recheck
             and (not spec.get("_annual_filename_cue") or
                  json.loads(existing["identification"]).get("annual_report_body_verified"))):
         # Same bytes already extracted; refresh availability evidence only.
@@ -451,12 +465,22 @@ def ingest_document(store: Store, fetcher: Fetcher, company: Company, spec: Dict
     known_speakers, management_speakers = transcript_speakers(pages) if doc_type == "earnings_call_transcript" else (set(), set())
     if spec.get("_discovered") and doc_type == "earnings_call_transcript":
         content = "\n".join(pages)
-        turns = [m.group(1).strip() for m in SPEAKER_RE.finditer(_clean(content))
-                 if m.group(1).strip().casefold() == "moderator" or _person_label(m.group(1).strip())]
+        turns = []
+        carry = None
+        for page in pages:
+            chunks, carry = chunk_page(page, True, carry, known_speakers)
+            for _, label in chunks:
+                if label and (not turns or turns[-1] != label):
+                    turns.append(label)
         actual_people = [name for name in turns if name.casefold() != "moderator"]
-        # A cover's Ref/Sub/Scrip labels are not dialogue. Require repeated
-        # turns with at least one conservatively identified person.
-        transcript_body = bool(re.search(r"\btranscript\b", content[:18000], re.I)) and len(turns) >= 3 and bool(actual_people)
+        # Count actual speech using the same speaker rules as extraction. A
+        # roster or cover labels do not establish dialogue. AGM transcripts
+        # without an earnings/conference-call header are not earnings calls.
+        call_header = re.sub(r"\s+", " ", " ".join(pages[:6]))
+        call_context = bool(re.search(r"\b(?:earnings\s+call|conference\s+call|earnings\s+conference)\b", call_header, re.I))
+        transcript_body = (bool(re.search(r"\btranscripts?\b", content[:18000], re.I))
+                           and call_context and len(turns) >= 3 and bool(actual_people))
+        ident["transcript_check_version"] = TRANSCRIPT_CHECK_VERSION
         ident["transcript_dialogue_verified"] = transcript_body
         ident["identity_ok"] = ident["identity_ok"] and transcript_body
     if management_speakers:
@@ -500,17 +524,16 @@ def link_announcement_attachment(store: Store, fetcher: Fetcher, company: Compan
                                  max_pages: int = 600) -> Dict[str, Any]:
     """Download an announcement's attachment as an exchange_filing whose availability is the
     record's own dissemination time."""
+    ev = [AvailabilityEvidence(method="exchange_announcement", source_url=ann["source_url"], source_hash=ann.get("source_hash"),
+                               matched_record=json.loads(ann["raw_json"]) if isinstance(ann.get("raw_json"), str) else None,
+                               note="dissemination time of the announcement carrying this attachment").model_dump()]
     spec = {
         "url": ann["attachment_url"], "doc_type": "exchange_filing", "period_label": None,
         "event_date": (ann.get("published_at") or "")[:10] or None,
         "_published_at": ann.get("published_at"), "_precision": "second" if ann.get("published_at") else None,
+        "_availability_evidence": ev,
     }
     result = ingest_document(store, fetcher, company, spec, max_pages=max_pages)
-    if result.get("version_id"):
-        ev = [AvailabilityEvidence(method="exchange_announcement", source_url=ann["source_url"], source_hash=ann.get("source_hash"),
-                                   matched_record=json.loads(ann["raw_json"]) if isinstance(ann.get("raw_json"), str) else None,
-                                   note="dissemination time of the announcement carrying this attachment").model_dump()]
-        store.execute("UPDATE document_versions SET availability_evidence=? WHERE version_id=?", (json.dumps(ev), result["version_id"]))
     store.execute(
         "UPDATE announcements SET attachment_version_id=?, attachment_state=? WHERE announcement_id=?",
         (result.get("version_id"), result["state"], ann["announcement_id"]),

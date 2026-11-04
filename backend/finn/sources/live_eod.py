@@ -9,7 +9,7 @@ raw (unadjusted); a move is never presented as caused by a filing.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from statistics import mean
+from math import isfinite
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -26,6 +26,66 @@ def _yahoo_ticker(symbol: str, series: str = "EQ") -> str:
     return f"{symbol.strip().upper()}.NS"
 
 
+def _number(value: Any, *, positive: bool = False) -> Optional[float]:
+    """Keep genuine finite JSON numbers; absent fields never borrow another value."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        number = float(value)
+    except (ValueError, OverflowError):
+        return None
+    if not isfinite(number) or (number <= 0 if positive else number < 0):
+        return None
+    return number
+
+
+def _chart_rows(stamps: List[Any], quote: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Align fields by source index, then order and chain distinct market sessions.
+
+    Yahoo can omit optional OHLC arrays or return shorter parallel arrays. A valid
+    close/date remains useful in that case; it is not a reason to lose the whole
+    portfolio. Duplicate daily bars use the latest valid provider timestamp.
+    """
+    def value(field: str, index: int, positive: bool = False) -> Optional[float]:
+        values = quote.get(field)
+        raw = values[index] if isinstance(values, list) and index < len(values) else None
+        return _number(raw, positive=positive)
+
+    sessions: Dict[str, Dict[str, Any]] = {}
+    for i, ts in enumerate(stamps):
+        close = value("close", i, positive=True)
+        stamp = _number(ts)
+        if stamp is None:
+            continue
+        try:
+            date = datetime.fromtimestamp(stamp, timezone.utc).astimezone(IST).date().isoformat()
+        except (ValueError, OverflowError, OSError):
+            continue
+        if close is None:
+            # A provider row with a known date but no valid close must break the
+            # previous-session chain, rather than turn a multi-session move into
+            # a purported daily return. A valid duplicate for this date wins.
+            sessions.setdefault(date, {"trading_date": date, "source_timestamp": stamp, "close": None})
+            continue
+        row = {"trading_date": date, "source_timestamp": stamp,
+               "open": value("open", i, True), "high": value("high", i, True),
+               "low": value("low", i, True), "close": close,
+               "volume": value("volume", i)}
+        previous = sessions.get(date)
+        if previous is None or previous["close"] is None or stamp >= previous["source_timestamp"]:
+            sessions[date] = row
+    rows = []
+    previous_close = None
+    for row in sorted(sessions.values(), key=lambda row: row["trading_date"]):
+        if row["close"] is None:
+            previous_close = None
+            continue
+        row["prev_close"] = previous_close
+        previous_close = row["close"]
+        rows.append(row)
+    return rows
+
+
 def fetch_live_eod(symbol: str, client: httpx.Client, range_: str = "3mo") -> Dict[str, Any]:
     """Fetch recent daily OHLCV for one NSE symbol. Returns rows ascending by date, or an error."""
     ticker = _yahoo_ticker(symbol)
@@ -38,29 +98,22 @@ def fetch_live_eod(symbol: str, client: httpx.Client, range_: str = "3mo") -> Di
         return {"symbol": symbol, "state": "error", "error": f"Yahoo HTTP {resp.status_code}"}
     try:
         chart = resp.json()["chart"]
+        if not isinstance(chart, dict):
+            raise ValueError("invalid chart")
         if chart.get("error"):
             return {"symbol": symbol, "state": "not_found", "error": str(chart["error"])}
         result = chart["result"][0]
         meta = result["meta"]
         stamps = result["timestamp"]
         q = result["indicators"]["quote"][0]
+        if not isinstance(meta, dict) or not isinstance(stamps, list) or not isinstance(q, dict):
+            raise ValueError("invalid chart fields")
     except (KeyError, IndexError, TypeError, ValueError):
         return {"symbol": symbol, "state": "error", "error": "unexpected Yahoo response shape"}
 
-    rows: List[Dict[str, Any]] = []
-    prev_close: Optional[float] = None
-    for i, ts in enumerate(stamps):
-        close = q.get("close", [None] * len(stamps))[i]
-        if close is None:
-            continue
-        date = datetime.fromtimestamp(ts, timezone.utc).astimezone(IST).date().isoformat()
-        rows.append({
-            "trading_date": date,
-            "open": q.get("open", [None])[i], "high": q.get("high", [None])[i],
-            "low": q.get("low", [None])[i], "close": close,
-            "prev_close": prev_close, "volume": q.get("volume", [None])[i],
-        })
-        prev_close = close
+    rows = _chart_rows(stamps, q)
+    if not rows:
+        return {"symbol": symbol, "state": "error", "error": "no valid price sessions returned"}
     return {
         "symbol": symbol, "state": "ok", "ticker": ticker,
         "currency": meta.get("currency"), "exchange": meta.get("fullExchangeName"),

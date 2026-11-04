@@ -14,11 +14,63 @@ import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
+from math import isfinite
 from typing import Any, Dict, List, Optional
 
 CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{ticker}.NS?range=3mo&interval=1d"
 HEADERS = {"User-Agent": "Mozilla/5.0 (FINN primary-source research prototype)"}
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _number(value: Any, *, positive: bool = False) -> Optional[float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        number = float(value)
+    except (ValueError, OverflowError):
+        return None
+    if not isfinite(number) or (number <= 0 if positive else number < 0):
+        return None
+    return number
+
+
+def _chart_rows(stamps: List[Any], quote: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Keep the scheduled feed's source-index/date rules aligned with the backend."""
+    def value(field: str, index: int, positive: bool = False) -> Optional[float]:
+        values = quote.get(field)
+        raw = values[index] if isinstance(values, list) and index < len(values) else None
+        return _number(raw, positive=positive)
+
+    sessions: Dict[str, Dict[str, Any]] = {}
+    for i, ts in enumerate(stamps):
+        close = value("close", i, positive=True)
+        stamp = _number(ts)
+        if stamp is None:
+            continue
+        try:
+            date = datetime.fromtimestamp(stamp, timezone.utc).astimezone(
+                timezone(__import__("datetime").timedelta(hours=5, minutes=30))).date().isoformat()
+        except (ValueError, OverflowError, OSError):
+            continue
+        if close is None:
+            sessions.setdefault(date, {"trading_date": date, "source_timestamp": stamp, "close": None})
+            continue
+        row = {"trading_date": date, "source_timestamp": stamp,
+               "open": value("open", i, True), "high": value("high", i, True),
+               "low": value("low", i, True), "close": close, "volume": value("volume", i)}
+        previous = sessions.get(date)
+        if previous is None or previous["close"] is None or stamp >= previous["source_timestamp"]:
+            sessions[date] = row
+    rows = []
+    previous_close = None
+    for row in sorted(sessions.values(), key=lambda row: row["trading_date"]):
+        if row["close"] is None:
+            previous_close = None
+            continue
+        row["prev_close"] = previous_close
+        previous_close = row["close"]
+        rows.append(row)
+    return rows
 
 
 def _eod_anomaly(rows: List[Dict[str, Any]], price_move_pct: float, volume_multiple: float,
@@ -63,23 +115,23 @@ def _fetch(symbol: str) -> Dict[str, Any]:
         return {"symbol": symbol, "state": "error", "error": f"Yahoo HTTP {exc.code}"}
     except (urllib.error.URLError, TimeoutError) as exc:
         return {"symbol": symbol, "state": "error", "error": f"transport error: {exc.__class__.__name__}"}
+    except (ValueError, UnicodeError):
+        return {"symbol": symbol, "state": "error", "error": "invalid Yahoo JSON response"}
     try:
-        result = payload["chart"]["result"][0]
+        chart = payload["chart"]
+        if not isinstance(chart, dict):
+            raise ValueError("invalid chart")
+        if chart.get("error"):
+            return {"symbol": symbol, "state": "not_found", "error": str(chart["error"])}
+        result = chart["result"][0]
         meta, stamps, q = result["meta"], result["timestamp"], result["indicators"]["quote"][0]
-    except (KeyError, IndexError, TypeError):
+        if not isinstance(meta, dict) or not isinstance(stamps, list) or not isinstance(q, dict):
+            raise ValueError("invalid chart fields")
+    except (KeyError, IndexError, TypeError, ValueError):
         return {"symbol": symbol, "state": "error", "error": "unexpected Yahoo response shape"}
-    rows, prev = [], None
-    for i, ts in enumerate(stamps):
-        close = q.get("close", [None])[i] if i < len(q.get("close", [])) else None
-        if close is None:
-            continue
-        date = datetime.fromtimestamp(ts, timezone.utc).astimezone(
-            timezone(__import__("datetime").timedelta(hours=5, minutes=30))).date().isoformat()
-        rows.append({"trading_date": date, "close": close, "prev_close": prev,
-                     "volume": q.get("volume", [None])[i] if i < len(q.get("volume", [])) else None})
-        prev = close
+    rows = _chart_rows(stamps, q)
     if not rows:
-        return {"symbol": symbol, "state": "error", "error": "no price rows"}
+        return {"symbol": symbol, "state": "error", "error": "no valid price sessions returned"}
     return {"symbol": symbol, "state": "ok", "currency": meta.get("currency"),
             "exchange": meta.get("fullExchangeName"), "rows": rows}
 

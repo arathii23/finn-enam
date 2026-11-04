@@ -14,7 +14,7 @@ from .service import App, NotFound
 
 
 def create_app(service: Optional[App] = None) -> FastAPI:
-    settings = get_settings()
+    settings = service.settings if service is not None else get_settings()
     svc = service or App(settings)
     api = FastAPI(title="FINN", version="0.1.0-m1")
     api.state.svc = svc
@@ -100,6 +100,10 @@ def create_app(service: Optional[App] = None) -> FastAPI:
     @api.get("/api/coverage")
     def coverage():
         return svc.coverage()
+
+    @api.post("/api/portfolio/refresh")
+    def refresh_portfolio(days: int = Query(7, ge=1, le=30)):
+        return wrap(svc.refresh_current_portfolio, days)
 
     @api.get("/api/live-prices")
     def live_prices(price_move_pct: Optional[float] = Query(None, ge=0, le=100),

@@ -19,7 +19,7 @@ from .replay import classify_versions
 from .sources import documents, nse
 from .sources.fetch import Fetcher
 
-DISCOVERY_VERSION = "nse-discovery-v1"
+DISCOVERY_VERSION = "nse-discovery-v2-bundled-transcripts"
 EXCHANGE_HOSTS = {"nsearchives.nseindia.com", "archives.nseindia.com", "www.nseindia.com", "nseindia.com"}
 _UNSUPPORTED_EXTENSIONS = (".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".doc", ".docx",
                            ".xls", ".xlsx", ".ppt", ".pptx", ".html", ".htm")
@@ -92,7 +92,7 @@ def transcript_candidate(record: Dict, res, company: Company) -> Optional[Dict]:
 
 def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings, company: Company,
                              cutoff_utc: str, progress: Callable[[str], None] = lambda s: None,
-                             deadline: Optional[float] = None) -> Dict[str, Any]:
+                             deadline: Optional[float] = None, refresh: bool = False) -> Dict[str, Any]:
     """Fill absent AR/transcript coverage within finite query/download bounds.
 
     Latest annual index, at most four 90-day announcement windows, three AR
@@ -114,8 +114,8 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
         return classify_versions(store, company.company_id, "replay", cutoff_utc)[0]
 
     existing = eligible_types()
-    need_ar = not any(v["doc_type"] == "annual_report" for v in existing)
-    need_tr = not any(v["doc_type"] == "earnings_call_transcript" for v in existing)
+    need_ar = refresh or not any(v["doc_type"] == "annual_report" for v in existing)
+    need_tr = refresh or not any(v["doc_type"] == "earnings_call_transcript" for v in existing)
     if not need_ar and not need_tr:
         return {**report, "state": "already_covered", "elapsed_seconds": 0}
 
@@ -134,6 +134,7 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
         index_specs.sort(key=lambda s: s.get("_published_at") or "", reverse=True)
 
     attempts = {"annual_report": 0, "earnings_call_transcript": 0}
+    checked = {"annual_report": set(), "earnings_call_transcript": set()}
     tried = set()
     skipped = set()
 
@@ -151,6 +152,9 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
         progress("downloading_sources")
         result = documents.ingest_document(store, fetcher, company, spec, max_pages=settings.max_pdf_pages)
         report["documents"].append(result)
+        if result.get("state") == "fetched" and any(v["version_id"] == result.get("version_id") and
+                v["doc_type"] == kind for v in eligible_types()):
+            checked[kind].add(result["version_id"])
         if result.get("state") != "fetched":
             report["issues"].append(f"{kind} {result.get('state')}: {result.get('error')}")
         elif result.get("identification", {}).get("identity_ok") is False:
@@ -173,7 +177,7 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
         if not time_left():
             report["issues"].append("Discovery time budget reached; remaining documents were not checked.")
             break
-        ar_present = any(v["doc_type"] == "annual_report" for v in eligible_types())
+        ar_present = bool(checked["annual_report"]) if refresh else any(v["doc_type"] == "annual_report" for v in eligible_types())
         if ar_present and (not need_tr or tr_found >= 2):
             break
         start = cursor - timedelta(days=89)
@@ -214,7 +218,7 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
             annual_specs.sort(key=lambda s: (s.get("_published_at") or "", not s.get("_annual_filename_cue", False)), reverse=True)
             for spec in annual_specs:
                 ingest(spec)
-                ar_present = any(v["doc_type"] == "annual_report" for v in eligible_types())
+                ar_present = bool(checked["annual_report"]) if refresh else any(v["doc_type"] == "annual_report" for v in eligible_types())
                 if ar_present:
                     break
         for stamp, rec in rows:
@@ -224,16 +228,16 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
                     before = {v["version_id"] for v in eligible_types() if v["doc_type"] == "earnings_call_transcript"}
                     ingest(spec)
                     after = {v["version_id"] for v in eligible_types() if v["doc_type"] == "earnings_call_transcript"}
-                    tr_found += len(after - before)
+                    tr_found = len(checked["earnings_call_transcript"]) if refresh else tr_found + len(after - before)
         cursor = start - timedelta(days=1)
 
     # A dated annual-index PDF older than the announcement lookback remains a
     # bounded fallback. Undated entries still require an exact dated attachment.
-    if not any(v["doc_type"] == "annual_report" for v in eligible_types()):
+    if not (bool(checked["annual_report"]) if refresh else any(v["doc_type"] == "annual_report" for v in eligible_types())):
         for spec in index_specs:
             if spec.get("_published_at"):
                 ingest(spec)
-                if any(v["doc_type"] == "annual_report" for v in eligible_types()):
+                if bool(checked["annual_report"]):
                     break
 
     documents.link_existing_versions(store, company)
@@ -243,6 +247,13 @@ def discover_company_sources(store: Store, fetcher: Fetcher, settings: Settings,
     for kind in ("annual_report", "earnings_call_transcript"):
         if kind not in kinds:
             report["issues"].append(f"No eligible {kind.replace('_', ' ')} found within the bounded discovery lookback.")
-    report.update(state="completed" if {"annual_report", "earnings_call_transcript"} <= kinds else "partial",
+    if refresh:
+        report["refresh"] = True
+        report["checked_documents"] = {kind: len(ids) for kind, ids in checked.items()}
+        for kind, ids in checked.items():
+            if not ids:
+                report["issues"].append(f"Current {kind.replace('_', ' ')} check did not succeed; older stored evidence may still be shown.")
+    complete = all(checked.values()) if refresh else {"annual_report", "earnings_call_transcript"} <= kinds
+    report.update(state="completed" if complete else "partial",
                   elapsed_seconds=round(time.monotonic() - started, 2), finished_at=utcnow())
     return report

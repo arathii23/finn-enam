@@ -8,6 +8,18 @@ The assessment requires the actual coding conversations, not a reconstruction. P
 | Milestone 1 implementation (30 Oct 2026) | Claude (claude.ai project "Enam holdings", Claude Code session) | https://claude.ai/code/session_01S6ppkkVG3jJnpe7wRd4FGQ — create a share link and verify an evaluator can open it |
 | M3 management profiles + M4 local polish (31 Oct 2026) | Codex desktop, this chat | Authentic chat must be exported/shared and evaluator access checked; no share link fabricated |
 | Financial trust/workflow pass and keyless Claude Code handoff (3 Nov 2026) | Codex desktop, this chat | Preserve the authentic chat; detailed continuation instructions are in `HANDOFF_CLAUDE_CODE.md`, not a replacement conversation export |
+| Post-submission practical workflow improvements (4 Nov 2026) | Codex desktop, this chat | Preserve this authentic continuation; `POST_SUBMISSION_IMPROVEMENTS.md` records changes and checks, not a substitute conversation export |
+
+4 November supplementary status: the user reports the assessment already submitted. Work in this
+continuation improves the local app and keeps the submitted links unchanged until a later publish.
+Current filing metadata checks, current-source research, a browser-local cited notebook, practical
+static-to-live handoffs, question/quotation fidelity and optional Groq/free-only OpenRouter adapters
+were implemented. A real current NSE run retained 49 valid notices, with 14/15 holding checks fully
+validated; one holding's partial check remains visible. Current Infosys research exposed and repaired
+standalone-speaker/bundled-title transcript discovery. Tests use fictional fixtures; separate real
+source checks use a copied corpus and keys disabled. Verification scope and limits are recorded in
+`POST_SUBMISSION_IMPROVEMENTS.md`. No new model account/key, model API spend, commit, push, hosted
+deployment or submission was made in this continuation. Earlier entries retain their historical scope.
 
 3 November supplementary status: 119 backend tests and the frontend build passed; corrected keyless
 cold source checks and local read-only restart evidence are retained in ignored verification data.

@@ -1,5 +1,6 @@
 // Thin typed client for the FINN API (same origin).
 
+export type ResearchMode = "replay" | "live";
 export type Replay = {
   replay_id: string; label: string; filing_from: string; filing_to: string;
   cutoff_utc: string; cutoff_display: string; prepared_symbols: string[];
@@ -7,6 +8,7 @@ export type Replay = {
 export type Health = {
   status: string; model_configured: boolean; model_primary: string; replay: Replay | null;
   corpus: Record<string, number>; frontend_built: boolean;
+  capabilities?: { keyless_research: boolean; current_source_research: boolean; source_refresh: string };
 };
 export type Company = {
   company_id: string; symbol: string; legal_name: string; exchange: string; isin: string; series: string;
@@ -33,11 +35,12 @@ export type Overview = {
   company: Company; mode: string; replay: Replay | null; announcements: Announcement[]; eod: Eod[];
   documents: { eligible: DocVersion[]; excluded: DocVersion[] };
   coverage: { source_kind: string; state: string; n: number; last: string }[];
+  freshness?: { latest_publication: string | null; last_checked: string | null; state: string; note: string };
 };
 export type Claim = { text: string; evidence_ids: string[]; speaker?: string | null };
 export type Section = { status: string; claims: Claim[]; candidate_evidence_ids: string[]; note?: string | null };
 export type EvidenceIndexEntry = { version_id: string; doc_type: string; period_label: string | null; page_index: number; speaker: string | null; published_at: string | null; excerpt: string };
-export type BriefItem = { kind: string; quote: string; speaker: string | null; doc_type: string; period_label: string | null; evidence_id: string; page_index: number };
+export type BriefItem = { kind: string; quote: string; speaker: string | null; doc_type: string; period_label: string | null; evidence_id: string; page_index: number; context_evidence_ids?: string[] };
 export type SourceBrief = { status: string; headline: string | null; method: string; query_terms: string[]; highlights: BriefItem[]; suggested_questions: string[] };
 export type ResearchOutput = {
   research_id: string; company: Company; mode: string; cutoff: string | null; question: string | null;
@@ -49,6 +52,7 @@ export type ResearchOutput = {
   generation: { status: string; reason: string | null; model: string | null; usage: Record<string, unknown> };
   generated_at: string; evidence_index: Record<string, EvidenceIndexEntry>; removed_claims: unknown[];
   source_brief?: SourceBrief | null;
+  discovery?: { state?: string; finished_at?: string; cached?: boolean; cache_note?: string };
 };
 export type Job = {
   job_id: string; state: string; stage: string | null; error: string | null; created_at: string; updated_at: string;
@@ -59,6 +63,7 @@ export type Job = {
 export type SavedResearchItem = {
   job_id: string; symbol: string; legal_name: string; question: string | null; event_id: string | null;
   mode: string; generated_at: string; state: string; document_count: number;
+  kind?: "source_brief" | "ai_brief"; provider?: string | null;
 };
 export type Evidence = {
   passage: { passage_id: string; version_id: string; page_index: number; printed_page: string | null; printed_page_reason: string | null; speaker: string | null; text: string };
@@ -80,13 +85,16 @@ export type QueueCompany = {
   coverage: { identity: boolean; announcements: number; eod: number; documents: number };
   leading_events?: QueueEvent[]; notable_events?: QueueEvent[]; routine_count?: number; routine_events?: QueueEvent[];
   eod_anomaly?: EodAnomaly | null; can_research?: boolean;
+  freshness?: { state: string; last_checked: string | null; note: string };
 };
+export type PortfolioRefresh = { state: string; checked: number; companies: { symbol: string; state: string; announcements?: number; error?: string }[]; finished_at: string; cached?: boolean };
 export type PortfolioQueue = {
   mode: string; replay: Replay | null;
   window: { preset: string; from: string | null; to: string; filing_from: string | null; filing_to: string; label: string; stored_only: boolean };
   thresholds: { price_move_pct: number; volume_multiple: number; baseline_sessions: number; min_baseline_sessions: number };
   summary: { companies: number; checked: number; with_events: number; price_volume_flagged: number };
   companies: QueueCompany[];
+  refresh?: PortfolioRefresh | null;
 };
 
 export type NarrativeStatement = {
@@ -197,18 +205,18 @@ const STATIC_RESEARCH = () => Promise.reject(new ApiError(0, "static_mode",
 
 const liveApi = {
   health: () => call<Health>("/api/health"),
-  overview: (symbol: string) => call<Overview>(`/api/companies/${encodeURIComponent(symbol)}/overview?mode=replay`),
-  narrative: (symbol: string) => call<Narrative>(`/api/companies/${encodeURIComponent(symbol)}/narrative?mode=replay`),
-  quarterly: (symbol: string) => call<Quarterly>(`/api/companies/${encodeURIComponent(symbol)}/quarterly?mode=replay`),
-  extractQuarterly: (symbol: string) => call<Quarterly>(`/api/companies/${encodeURIComponent(symbol)}/quarterly/extract?mode=replay`, { method: "POST" }),
-  management: (symbol: string) => call<ManagementChanges>(`/api/companies/${encodeURIComponent(symbol)}/management?mode=replay`),
-  research: (body: { symbol: string; question?: string; event_id?: string; mode: "replay"; retry?: boolean }) =>
+  overview: (symbol: string, mode: ResearchMode = "replay") => call<Overview>(`/api/companies/${encodeURIComponent(symbol)}/overview?mode=${mode}`),
+  narrative: (symbol: string, mode: ResearchMode = "replay") => call<Narrative>(`/api/companies/${encodeURIComponent(symbol)}/narrative?mode=${mode}`),
+  quarterly: (symbol: string, mode: ResearchMode = "replay") => call<Quarterly>(`/api/companies/${encodeURIComponent(symbol)}/quarterly?mode=${mode}`),
+  extractQuarterly: (symbol: string, mode: ResearchMode = "replay") => call<Quarterly>(`/api/companies/${encodeURIComponent(symbol)}/quarterly/extract?mode=${mode}`, { method: "POST" }),
+  management: (symbol: string, mode: ResearchMode = "replay") => call<ManagementChanges>(`/api/companies/${encodeURIComponent(symbol)}/management?mode=${mode}`),
+  research: (body: { symbol: string; question?: string; event_id?: string; mode: ResearchMode; retry?: boolean }) =>
     call<{ job_id: string; reused: boolean }>("/api/research", { method: "POST", body: JSON.stringify(body) }),
   job: (id: string) => call<Job>(`/api/jobs/${encodeURIComponent(id)}`),
   savedResearch: (symbol?: string) => call<{ items: SavedResearchItem[] }>(`/api/research/saved${symbol ? `?symbol=${encodeURIComponent(symbol)}` : ""}`),
   evidence: (id: string) => call<Evidence>(`/api/evidence/${encodeURIComponent(id)}`),
-  portfolio: (opts?: { priceMovePct?: number; volumeMultiple?: number; window?: string; filingFrom?: string; filingTo?: string }) => {
-    const q = new URLSearchParams({ mode: "replay" });
+  portfolio: (opts?: { priceMovePct?: number; volumeMultiple?: number; window?: string; filingFrom?: string; filingTo?: string; mode?: ResearchMode }) => {
+    const q = new URLSearchParams({ mode: opts?.mode || "replay" });
     if (opts?.priceMovePct != null) q.set("price_move_pct", String(opts.priceMovePct));
     if (opts?.volumeMultiple != null) q.set("volume_multiple", String(opts.volumeMultiple));
     if (opts?.window) q.set("window", opts.window);
@@ -223,6 +231,7 @@ const liveApi = {
     const qs = q.toString();
     return call<LivePrices>(`/api/live-prices${qs ? `?${qs}` : ""}`);
   },
+  refreshPortfolio: () => call<PortfolioRefresh>("/api/portfolio/refresh?days=7", { method: "POST" }),
   fileUrl: (versionId: string, page?: number) => `/api/documents/${encodeURIComponent(versionId)}/file${page ? `#page=${page}` : ""}`,
 };
 
@@ -251,6 +260,7 @@ const staticApi: typeof liveApi = {
       .then((r) => { if (!r.ok) throw new ApiError(r.status, "live_feed", r.status === 404 ? "The live feed is initialising — the scheduled refresh runs every few minutes." : `Live feed HTTP ${r.status}`); return r.json() as Promise<LivePrices>; })
       .catch((e) => { if (e instanceof ApiError) throw e; throw new ApiError(0, "network", "The live price feed could not be reached."); });
   })) as typeof liveApi.livePrices,
+  refreshPortfolio: STATIC_RESEARCH as typeof liveApi.refreshPortfolio,
   fileUrl: (versionId: string, page?: number) => {
     const d = docsCache?.[versionId];
     const url = d?.final_url || d?.source_url;

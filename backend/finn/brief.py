@@ -13,17 +13,18 @@ import re
 from typing import Dict, List, Optional
 
 from .contracts import BriefItem, SourceBrief
-from .retrieval import SECTION_VOCAB, question_terms
+from .retrieval import SECTION_VOCAB, question_terms, topic_matches
 
 # Keep each highlight to one idea plus its qualification; do not reproduce whole pages.
-MAX_QUOTE_CHARS = 360
+MAX_QUOTE_CHARS = 1800
+MAX_HIGHLIGHTS = 6
 # Sentence-ish split that keeps decimals, Rs. and common abbreviations intact.
 _ABBR = r"(?<!\b[A-Z])(?<!\bRs)(?<!\bNo)(?<!\bMr)(?<!\bMs)(?<!\bQ[1-4])(?<!\bvs)(?<!\bFY)"
 _SENT = re.compile(_ABBR + r"(?<=[.!?])\s+(?=[A-Z0-9“\"'])")
 _NUM = re.compile(r"\d")
 # Conditions/qualifiers whose preceding or following sentence carries the real caveat.
 _QUALIFIER = re.compile(r"\b(but|however|subject to|provided|expect|guidance|target|assuming|"
-                        r"excluding|including|caveat|barring|depend)\b", re.I)
+                        r"excluding|including|caveat|barring|depend|assumptions?|assumes?|offset|headwinds?|tailwinds?)\b", re.I)
 _SECTION_ORDER = ["event_filing", "business_context", "management_commentary"]
 _SECTION_LABEL = {"event_filing": "exchange filing", "business_context": "annual report",
                   "management_commentary": "earnings-call transcript"}
@@ -36,7 +37,18 @@ def _sentences(text: str) -> List[str]:
 
 def _score(sentence: str, terms: List[str], vocab: List[str], want_numbers: bool) -> int:
     low = sentence.lower()
-    score = sum(3 for t in terms if t in low)
+    if terms:
+        # A number or generic business word cannot turn an unrelated sentence into an answer.
+        matches = topic_matches(sentence, terms)
+        if not matches:
+            return 0
+        focus = (6 if {"guidance", "guided", "outlook", "forecast"}.intersection(terms)
+                 and re.search(r"\b(guidance|outlook|forecast)\b", low) else 0)
+        if {"basis", "assumptions", "conditions"}.intersection(terms) and re.search(
+                r"\b(assumptions?|assumes?|assuming|subject to|headwinds?|tailwinds?|offset)\b", low):
+            focus += 6
+        return matches * 3 + focus
+    score = 0
     score += sum(1 for t in vocab if t in low)
     if want_numbers and _NUM.search(sentence):
         score += 1
@@ -61,13 +73,18 @@ def _select_quote(text: str, terms: List[str], vocab: List[str], want_numbers: b
         if idx >= 0:
             cursor = idx + len(s)
     scored = [(_score(s, terms, vocab, want_numbers), i, s) for i, s in enumerate(sents)]
-    _, best_i, best = max(scored, key=lambda x: (x[0], -x[1]))
+    score, best_i, best = max(scored, key=lambda x: (x[0], -x[1]))
+    if terms and score <= 0:
+        return None
     chosen = [best_i]
     # Keep a neighbour when the caveat lives next door: a condition in the best sentence
     # (look forward) or a dangling referent/pronoun start (look back).
-    if _QUALIFIER.search(best) and best_i + 1 < len(sents):
+    if best_i + 1 < len(sents) and (_QUALIFIER.search(best) or _QUALIFIER.search(sents[best_i + 1])):
         chosen.append(best_i + 1)
-    if re.match(r"^(this|that|these|those|it|they|he|she)\b", best, re.I) and best_i - 1 >= 0:
+        if best_i + 2 < len(sents) and _QUALIFIER.search(sents[best_i + 2]):
+            chosen.append(best_i + 2)
+    if best_i > 0 and (re.match(r"^(this|that|these|those|it|they|he|she|however|but)\b", best, re.I)
+                       or _QUALIFIER.search(sents[best_i - 1])):
         chosen.insert(0, best_i - 1)
     valid = [i for i in sorted(set(chosen)) if spans[i]]
     if not valid:
@@ -75,10 +92,8 @@ def _select_quote(text: str, terms: List[str], vocab: List[str], want_numbers: b
     start, end = min(spans[i][0] for i in valid), max(spans[i][1] for i in valid)
     quote = src[start:end].strip()
     if len(quote) > MAX_QUOTE_CHARS:
-        bs = spans[best_i]
-        quote = src[bs[0]:bs[1]].strip() if bs else quote
-        if len(quote) > MAX_QUOTE_CHARS:
-            quote = quote[:MAX_QUOTE_CHARS].rsplit(" ", 1)[0] + "…"
+        # Abstain rather than cutting a sentence/condition or dropping its neighbour.
+        return None
     return quote or None
 
 
@@ -87,19 +102,89 @@ def build_source_brief(sections: Dict[str, List[Dict]], question: Optional[str])
     terms = question_terms(question)
     highlights: List[BriefItem] = []
     doc_counts: Dict[str, int] = {}
-    for name in _SECTION_ORDER:
+    seen = set()
+    quoted_sources = []
+    management_focus = bool({"guidance", "guided", "outlook", "forecast", "assumptions", "conditions", "demand"}.intersection(terms))
+    section_order = (["management_commentary", "business_context", "event_filing"] if management_focus else _SECTION_ORDER)
+    for name in section_order:
         passages = sections.get(name) or []
+        by_id = {p["passage_id"]: p for p in passages}
+        context_ids = {pid for p in passages for pid in p.get("_context_ids", p.get("_following_context_ids", []))}
         vocab = SECTION_VOCAB.get(name, {}).get("terms", [])
         want_numbers = name in ("management_commentary", "event_filing")
+        added = 0
+        section_limit = 3 if name == "management_commentary" else (1 if management_focus else 2)
+        candidates = []
         for p in passages:
+            if p["passage_id"] in context_ids or p.get("_context_for"):
+                continue  # context is shown with its anchor, never as an incomplete standalone answer
             quote = _select_quote(p.get("text") or "", terms, vocab, want_numbers)
-            if not quote:
+            if quote:
+                candidates.append((p, quote))
+        if terms:
+            # Rank the selected statement, not the entire surrounding passage.
+            # A dense results paragraph must not outrank a direct guidance answer.
+            candidates.sort(key=lambda item: item[0].get("published_at") or "", reverse=True)
+            candidates.sort(key=lambda item: _score(item[1], terms, vocab, want_numbers), reverse=True)
+        for p, quote in candidates:
+            if not quote or quote in seen:
                 continue
-            highlights.append(BriefItem(
-                kind=name, quote=quote, speaker=p.get("speaker"),
-                doc_type=p.get("doc_type") or "", period_label=p.get("period_label"),
-                evidence_id=p["passage_id"], page_index=p["page_index"]))
-            doc_counts[p.get("doc_type") or ""] = doc_counts.get(p.get("doc_type") or "", 0) + 1
+            # A bundled media/analyst call can repeat the same guidance with tiny
+            # transcription differences. Retain one exact quote, never merge or
+            # paraphrase. Different figures, speakers or qualifications survive.
+            words = set(re.findall(r"[a-z]+", quote.lower()))
+            signature = (re.findall(r"\d+(?:\.\d+)?", quote), set(_QUALIFIER.findall(quote.lower())))
+            if p.get("version_id") and any(
+                    p["version_id"] == prev.get("version_id") and p.get("speaker") == prev.get("speaker")
+                    and signature == old_signature and len(words & old_words) / max(1, len(words | old_words)) >= 0.82
+                    for prev, old_words, old_signature in quoted_sources):
+                continue
+            group = [(p, quote)]
+            following_ids = p.get("_following_context_ids", [])
+            preceding_ids = [pid for pid in p.get("_context_ids", []) if pid not in following_ids]
+            if preceding_ids:
+                # A page break may split one sentence between a leading context
+                # chunk and the anchor. Keep both complete source slices in order,
+                # rather than selecting away the sentence's continuation.
+                preceding = [by_id.get(pid) for pid in preceding_ids]
+                if any(ctx is None or ctx.get("speaker") != p.get("speaker")
+                       or ctx.get("version_id") != p.get("version_id") for ctx in preceding):
+                    continue
+                ordered = sorted(preceding, key=lambda ctx: (ctx["page_index"], ctx.get("seq", 0)))
+                group = [(ctx, (ctx.get("text") or "").strip()) for ctx in ordered] + [(p, (p.get("text") or "").strip())]
+                if any(not fragment or len(fragment) > MAX_QUOTE_CHARS for _, fragment in group):
+                    continue
+            for pid in following_ids:
+                ctx = by_id.get(pid)
+                if (ctx is None or ctx.get("speaker") != p.get("speaker")
+                        or ctx.get("version_id") != p.get("version_id")):
+                    group = []
+                    break
+                # Preserve the complete adjacent qualification as its OWN exact
+                # passage slice and citation. Do not select only a topical sentence
+                # or claim that text spliced across two passages is one quote.
+                condition = (ctx.get("text") or "").strip()
+                if not condition or len(condition) > MAX_QUOTE_CHARS:
+                    group = []
+                    break
+                group.append((ctx, condition))
+            if not group or added + len(group) > section_limit or len(highlights) + len(group) > MAX_HIGHLIGHTS:
+                continue  # A known condition and headline fit together, or neither is shown.
+            for source, fragment in group:
+                seen.add(fragment)
+                quoted_sources.append((source, set(re.findall(r"[a-z]+", fragment.lower())),
+                                       (re.findall(r"\d+(?:\.\d+)?", fragment), set(_QUALIFIER.findall(fragment.lower())))))
+                highlights.append(BriefItem(
+                    kind=name, quote=fragment, speaker=source.get("speaker"),
+                    doc_type=source.get("doc_type") or "", period_label=source.get("period_label"),
+                    evidence_id=source["passage_id"], page_index=source["page_index"],
+                    context_evidence_ids=[item["passage_id"] for item, _ in group] if len(group) > 1 else []))
+                doc_counts[source.get("doc_type") or ""] = doc_counts.get(source.get("doc_type") or "", 0) + 1
+                added += 1
+            if added >= section_limit or len(highlights) >= MAX_HIGHLIGHTS:
+                break
+        if len(highlights) >= MAX_HIGHLIGHTS:
+            break
 
     if not highlights:
         return SourceBrief(status="empty", query_terms=terms,

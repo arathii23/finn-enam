@@ -7,8 +7,8 @@ FINN ships in two tiers. The **static snapshot** is the reliable submission link
 |---|---|---|
 | Cost | Free | Free tier possible |
 | Sleeps? | **Never** (it's just files on a CDN) | Free hosts sleep after ~15 min |
-| Needs a key? | No | No (keyless) — or a free Gemini key for AI synthesis |
-| What works | Push digest, all saved briefs, quarterly, management, narrative, evidence | Everything + fresh on-demand research for any NSE ticker |
+| Needs a key? | No | No for source extracts; optional Gemini/Groq/free-only OpenRouter key for synthesis |
+| What works | Historical digest, saved briefs, quarterly, management, narrative, evidence, browser notebook | Also explicit current filings and current-source research where primary data is accessible |
 | What's disabled | On-demand research, threshold re-tuning, custom dates | — |
 
 Both are built from the same verified corpus and the same code. Nothing here needs a paid
@@ -18,10 +18,10 @@ model API, and the evaluator needs no key of their own.
 
 ## 1. Build the static snapshot (2 commands)
 
-From the repo root, with model keys unset so the snapshot is provably model-free:
+From the repo root, selecting keyless mode so the snapshot makes no model calls:
 
 ```bash
-cd backend && env OPENAI_API_KEY='' ANTHROPIC_API_KEY='' GEMINI_API_KEY='' \
+cd backend && env FINN_MODEL_PROVIDER=keyless \
   ../.venv/bin/python -m finn export-static
 ```
 
@@ -69,22 +69,45 @@ cd frontend && npm run build          # live build (no VITE_STATIC)
 cd ../backend && ../.venv/bin/python -m finn serve --host 0.0.0.0 --port 8000
 ```
 
-Open `http://<your-lan-ip>:8000` on a phone on the same Wi-Fi. For keyless operation set no
-keys. For **free AI synthesis**, get a free key at https://aistudio.google.com/apikey and:
+Open `http://<your-lan-ip>:8000` on a phone on the same Wi-Fi. For keyless operation select
+`FINN_MODEL_PROVIDER=keyless`. For optional synthesis, configure the server as described in
+`FREE_RESOURCES.md`. A Gemini example:
 
 ```bash
 FINN_MODEL_PROVIDER=gemini GEMINI_API_KEY=your-free-key ../.venv/bin/python -m finn serve --port 8000
 ```
 
 **Deploy it (free tier, but sleeps):** the `Dockerfile` + `render.yaml` blueprint deploy one
-web service. The blueprint defaults to `FINN_MODEL_PROVIDER=gemini` with a blank key (keyless);
-paste a free Gemini key in the dashboard to enable synthesis. Free Render instances **sleep
+web service. The blueprint defaults to `FINN_MODEL_PROVIDER=keyless` and requires no key;
+select a provider and add its server-side key to enable optional synthesis. Existing live
+settings change only when explicitly updated. Free Render instances **sleep
 after ~15 min** and cold-start in ~50 s — fine to try, but that's why the static snapshot is
 the primary link. A paid instance with a persistent disk avoids sleep (see `docs/DEPLOYMENT.md`).
 
 ### Honest limits
 - Free model tiers are **rate-limited**, not metered. On a 429 FINN falls back to the keyless
   verbatim source brief — it never breaks or spins forever.
-- The live corpus is a stored April-2025 replay, not a real-time feed; every date is labelled.
+- Historical replay is retained. The live app can explicitly check recent exchange notices and
+  discover current research sources; a new request does not establish complete or continuous
+  coverage. Last-checked, publication and reporting dates have separate meanings.
 - On a datacenter IP, NSE may block fresh fetches; cached/replay access and clear
   source-failure states remain. Verify hosted fetch access before relying on it.
+
+## Updating the already-submitted links
+
+The post-submission changes are prepared locally. Deploy the backend first and check
+`/api/health` for `capabilities.current_source_research=true`, then verify a current-filing
+check and source brief. Publish the static bundle second, with the existing GitHub Pages base:
+
+```bash
+cd frontend
+VITE_STATIC=1 \
+VITE_LIVE_APP_URL=https://finn-mow9.onrender.com \
+VITE_LIVE_PRICES_URL=https://raw.githubusercontent.com/arathii23/finn-enam/live-data/live_prices.json \
+npm run build -- --base=/finn-enam/
+```
+
+Static research actions open a prefilled company/question in the live app; opening the link
+does not submit it. The static site and live app have separate browser notebooks. Current jobs
+and source-check caches on Render's ephemeral disk can disappear on restart; exported notebook
+notes retain their original primary-source URLs and evidence locators.

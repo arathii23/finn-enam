@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError, type Announcement, type Overview, type Quarterly } from "./api";
+import { api, ApiError, IS_STATIC, type Announcement, type Overview, type Quarterly, type ResearchMode } from "./api";
 import { docLabel, inr, istDateTime, qty, shortDate } from "./format";
 import { Chip, EvidenceButton, Section, StateBox } from "./ui";
 import { ManagementCard } from "./ManagementCard";
 import { ResearchComposer } from "./ResearchComposer";
 import { SavedResearch } from "./SavedResearch";
+import { liveAppUrl } from "./links";
+import { ResearchModePicker } from "./ResearchModePicker";
 
-type Props = { symbol: string; onResearch: (jobId: string) => void; onNarrative: () => void; onEvidence: (id: string, el: HTMLElement) => void };
+type Props = { symbol: string; mode: ResearchMode; onMode: (mode: ResearchMode) => void; initialQuestion?: string; initialEventId?: string; onResearch: (jobId: string) => void; onNarrative: () => void; onEvidence: (id: string, el: HTMLElement) => void };
 
-export function CompanyView({ symbol, onResearch, onNarrative, onEvidence }: Props) {
+export function CompanyView({ symbol, mode, onMode, initialQuestion, initialEventId, onResearch, onNarrative, onEvidence }: Props) {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
@@ -16,15 +18,15 @@ export function CompanyView({ symbol, onResearch, onNarrative, onEvidence }: Pro
 
   const load = useCallback(() => {
     setData(null); setError(null);
-    api.overview(symbol).then(setData).catch(setError);
-  }, [symbol]);
+    api.overview(symbol, mode).then(setData).catch(setError);
+  }, [symbol, mode]);
   useEffect(load, [load]);
 
   async function start(event?: Announcement, question?: string) {
     setStarting(event?.announcement_id ?? "company"); setStartError(null);
     try {
       const r = await api.research({
-        symbol, mode: "replay", event_id: event?.announcement_id,
+        symbol, mode, event_id: event?.announcement_id,
         question: question ?? (event ? "What does this filing state, and what did management say around it?" : undefined),
       });
       onResearch(r.job_id);
@@ -40,7 +42,7 @@ export function CompanyView({ symbol, onResearch, onNarrative, onEvidence }: Pro
     const unknown = error.state === "unknown_symbol";
     return (
       <StateBox kind={unknown ? "empty" : "error"} title={unknown ? `Identity could not be resolved for “${symbol}”` : "Company could not be loaded"}
-        action={<button className="btn" onClick={load}>Retry</button>}>
+        action={IS_STATIC && error.state === "not_in_snapshot" ? <a className="btn" href={liveAppUrl({ symbol, question: initialQuestion, eventId: initialEventId, mode: "live" })}>Find sources in live app ↗</a> : <button className="btn" onClick={load}>Retry</button>}>
         {error.message}
       </StateBox>
     );
@@ -51,6 +53,7 @@ export function CompanyView({ symbol, onResearch, onNarrative, onEvidence }: Pro
   const hasNarrative = documents.eligible.some((d) => d.doc_type === "earnings_call_transcript" || d.doc_type === "exchange_filing");
   const attemptCount = coverage.reduce((sum, item) => sum + item.n, 0);
   const notIngested = documents.eligible.length + documents.excluded.length === 0 && announcements.length === 0;
+  const contextualEvent = initialEventId ? announcements.find((event) => event.announcement_id === initialEventId) : undefined;
 
   return (
     <div className="stack">
@@ -59,9 +62,12 @@ export function CompanyView({ symbol, onResearch, onNarrative, onEvidence }: Pro
         <h1>{company.legal_name}</h1>
         <div className="id-row"><span className="mono">{company.symbol}</span><span className="mono">ISIN {company.isin}</span></div>
         <p className="fine">Identity verified against the NSE equity security master.</p>
-        <button className="btn btn-primary btn-block" onClick={() => start()} disabled={!!starting}>
-          {starting === "company" ? "Starting research…" : "Research this company"}
-        </button>
+        {!IS_STATIC && <ResearchModePicker mode={mode} onChange={onMode} />}
+        {mode === "live" && <div className="source-freshness" role="note"><strong>Stored source coverage</strong><p className="fine">Latest publication: {data.freshness?.latest_publication ? istDateTime(data.freshness.latest_publication) : "not established"}. Last source check: {data.freshness?.last_checked ? istDateTime(data.freshness.last_checked) : "not recorded"}.</p><p className="fine">{data.freshness?.note || "Research checks for current documents. Stored dates alone do not establish complete or current coverage."}</p></div>}
+        {IS_STATIC ? <a className="btn btn-primary btn-block" href={liveAppUrl({ symbol, question: initialQuestion, eventId: initialEventId, mode })}>Research in live app ↗</a> : <button className="btn btn-primary btn-block" onClick={() => start(contextualEvent, initialQuestion)} disabled={!!starting}>
+          {starting ? "Starting research…" : initialQuestion ? "Run this question" : mode === "live" ? "Check current sources & research" : "Research this company"}
+        </button>}
+        {IS_STATIC && <p className="fine">Saved briefs below open immediately. New questions open in the live app; its free service may take a minute to wake.</p>}
         {hasNarrative && (
           <button className="btn btn-block nv-entry" onClick={onNarrative} disabled={!!starting}>
             Numbers vs Narrative — promised vs delivered →
@@ -71,20 +77,20 @@ export function CompanyView({ symbol, onResearch, onNarrative, onEvidence }: Pro
       </section>
 
       <SavedResearch symbol={symbol} />
-      <ResearchComposer busy={!!starting} onSubmit={(question) => start(undefined, question)} />
+      <ResearchComposer busy={!!starting} initialQuestion={initialQuestion} symbol={symbol} company={company.legal_name} mode={mode} cutoff={data.replay?.cutoff_utc} eventId={contextualEvent?.announcement_id} onSubmit={(question) => start(contextualEvent, question)} />
 
       {notIngested && (
         <StateBox kind="partial" title="Ready to find this company's sources">
-          Select “Research this company” to find annual reports and call transcripts from dated exchange records. FINN will show which sources it can verify and any gaps.
+          {IS_STATIC ? "Open the live app to find primary documents for this company." : "Select Research to find annual reports and call transcripts from dated exchange records. FINN will show which sources it can verify and any gaps."}
         </StateBox>
       )}
 
-      {hasNarrative && <ManagementCard symbol={symbol} onEvidence={onEvidence} />}
-      {hasNarrative && <QuarterlyCard symbol={symbol} onEvidence={onEvidence} />}
+      {hasNarrative && <ManagementCard symbol={symbol} mode={mode} onEvidence={onEvidence} />}
+      {hasNarrative && <QuarterlyCard symbol={symbol} mode={mode} onEvidence={onEvidence} />}
 
       <Section title="Exchange announcements" aside={<Chip tone="muted">{announcements.length} in window</Chip>}>
         {announcements.length === 0 ? (
-          <p className="muted">No announcements stored for the replay filing window. This is not an all-clear: check the source coverage below.</p>
+          <p className="muted">No announcements stored for this {mode === "replay" ? "replay window" : "source view"}. This is not an all-clear: check the source coverage below.</p>
         ) : (
           <details className="research-disclosure">
           <summary>View {announcements.length} filings in date order</summary>
@@ -100,9 +106,9 @@ export function CompanyView({ symbol, onResearch, onNarrative, onEvidence }: Pro
                   {a.attachment_version_id ? (
                     <>
                       <Chip tone="ok">Filing retrieved</Chip>
-                      <button className="btn btn-small" onClick={() => start(a)} disabled={!!starting}>
+                      {IS_STATIC ? <a className="btn btn-small" href={liveAppUrl({ symbol, eventId: a.announcement_id, question: "What does this filing state, and what did management say around it?", mode })}>Research event in live app ↗</a> : <button className="btn btn-small" onClick={() => start(a)} disabled={!!starting}>
                         {starting === a.announcement_id ? "Starting…" : "Research this event"}
-                      </button>
+                      </button>}
                       <a className="btn btn-small btn-ghost" href={api.fileUrl(a.attachment_version_id)} target="_blank" rel="noopener">Open filing</a>
                     </>
                   ) : (
@@ -184,7 +190,7 @@ function pctText(v: number | null): string {
 // Quarterly first cut (Push): headline Revenue / EBITDA / PBT / PAT with QoQ & YoY from the
 // actual results filing. Model-extracted, then every figure verified verbatim against the filing;
 // anything that cannot be verified is omitted, not guessed.
-function QuarterlyCard({ symbol, onEvidence }: { symbol: string; onEvidence: (id: string, el: HTMLElement) => void }) {
+function QuarterlyCard({ symbol, mode, onEvidence }: { symbol: string; mode: ResearchMode; onEvidence: (id: string, el: HTMLElement) => void }) {
   const [q, setQ] = useState<Quarterly | null>(null);
   const [err, setErr] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -193,13 +199,13 @@ function QuarterlyCard({ symbol, onEvidence }: { symbol: string; onEvidence: (id
   useEffect(() => {
     let live = true;
     setQ(null); setErr(false);
-    api.quarterly(symbol).then((r) => live && setQ(r)).catch(() => live && setErr(true));
+    api.quarterly(symbol, mode).then((r) => live && setQ(r)).catch(() => live && setErr(true));
     return () => { live = false; };
-  }, [symbol, attempt]);
+  }, [symbol, mode, attempt]);
 
   const extract = async () => {
     setExtracting(true); setExtractError(null);
-    try { setQ(await api.extractQuarterly(symbol)); }
+    try { setQ(await api.extractQuarterly(symbol, mode)); }
     catch (error) { setExtractError(error instanceof Error ? error.message : "Headline figures could not be extracted."); }
     finally { setExtracting(false); }
   };
@@ -211,8 +217,8 @@ function QuarterlyCard({ symbol, onEvidence }: { symbol: string; onEvidence: (id
       <Section title="Quarterly first cut" aside={<Chip tone="muted">not available</Chip>}>
         <p className="muted">{q.reason ?? "No headline numbers could be verified from this filing."}</p>
         <p className="fine">FINN omits figures it cannot verify against the filing rather than guessing.</p>
-        {q.can_extract && <button className="btn btn-small" disabled={extracting} onClick={extract}>{extracting ? "Reading the filing…" : "Extract headline figures"}</button>}
-        {q.can_extract && <p className="fine">Starts one bounded extraction from the results filing. Opening this page does not run a model.</p>}
+        {q.can_extract && (IS_STATIC ? <a className="btn btn-small" href={liveAppUrl({ symbol, mode })}>Inspect figures in live app ↗</a> : <button className="btn btn-small" disabled={extracting} onClick={extract}>{extracting ? "Reading the filing…" : "Extract headline figures"}</button>)}
+        {q.can_extract && !IS_STATIC && <p className="fine">Starts one bounded extraction from the results filing. Opening this page does not run a model.</p>}
         {extractError && <p className="composer-error" role="alert">{extractError}</p>}
       </Section>
     );

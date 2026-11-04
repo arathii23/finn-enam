@@ -42,6 +42,18 @@ def test_call_notices_and_statutory_disclosures_are_not_results_or_company_acqui
     assert classify('Acquisition', 'Acquisition of 100% equity stake of Example Limited')['ref_category'] == 'M&A'
 
 
+def test_shareholder_vote_results_are_not_financial_results():
+    actual_shape = classify('Updates', 'Completion and Results of Postal Ballot dated 01 October 2026')
+    assert actual_shape['ref_category'] == 'agm_egm' and actual_shape['tier'] == TIER_NOTABLE
+    assert classify('Updates', 'Voting results and scrutinizer report')['ref_category'] == 'agm_egm'
+    assert classify('Updates', 'Unaudited Financial Results for the quarter ended September 30')['ref_category'] == 'results'
+
+
+def test_stakeholder_update_does_not_become_an_acquisition():
+    result = classify('Updates', 'Stakeholder communication and engagement update')
+    assert result['ref_category'] != 'M&A'
+
+
 def _bars(vols, closes, prevs):
     return [{"trading_date": f"2025-04-{10+i:02d}", "volume": v, "close": c, "prev_close": p}
             for i, (v, c, p) in enumerate(zip(vols, closes, prevs))]
