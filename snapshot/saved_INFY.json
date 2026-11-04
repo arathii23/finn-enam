@@ -1,1 +1,1 @@
-{"items": [{"job_id": "job_ef82f56b1af94761", "state": "completed", "symbol": "INFY", "legal_name": "Infosys Limited", "question": null, "event_id": null, "mode": "replay", "generated_at": "2026-10-30T22:43:11+00:00", "document_count": 4}]}
+{"items": [{"job_id": "job_ef82f56b1af94761", "state": "completed", "symbol": "INFY", "legal_name": "Infosys Limited", "question": null, "event_id": null, "mode": "replay", "generated_at": "2026-10-30T22:43:11+00:00", "kind": "ai_brief", "provider": "claude-sonnet-5-5", "document_count": 4}]}
