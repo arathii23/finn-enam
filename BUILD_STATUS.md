@@ -2,6 +2,19 @@
 
 Updated 4 November 2026 (IST). **FINN has been submitted to ENAM. The post-submission improvements are now published to the existing destinations and verified from the public network: source `main` and the Render app (https://finn-mow9.onrender.com, keyless), and the GitHub Pages demo (https://arathii23.github.io/finn-enam/).** 216 backend tests pass; live and static builds pass. A physical-phone check and real-key Groq/OpenRouter/Gemini quality remain pending. No new email was sent and no charge, account or provider key was used. Earlier dated entries describe their own checkpoints.
 
+## 4 November 2026 (evening) — larger seed corpus built and published (Claude Code)
+
+Render's free instance forgets run-time discoveries on redeploy, restart and spin-down, so a verified
+seed with more current documents was built in an isolated copy of the production store with
+`scripts/build_seed.py` (stages `prepare`, `discover`, `verify`, `pack`), published as the GitHub Release
+`corpus-2026-11-04` (423 MB; GitHub's server-side SHA-256 matched the packed tarball), and wired into the
+`Dockerfile`. Result, gaps and costs: [docs/DEPLOY_BACKEND_FREE.md](docs/DEPLOY_BACKEND_FREE.md), section
+"Larger seed corpus". In short: +56 verified documents (84 total), integrity checks passed, the two
+previously failing current questions finish first-attempt locally, the seed unpacks to about 550 MB, and
+9 of 15 holdings still lack a usable current transcript because the identity gates were not loosened. The
+production database hash was unchanged. Rollback: point the `Dockerfile` `SEED_URL` back at
+`corpus-2026-11-03`. Hosted verification results are recorded in the final lines of this entry.
+
 ## 4 November 2026 (later) — published and verified on the existing links (Claude Code)
 
 Full evidence and limits: [docs/POST_SUBMISSION_IMPROVEMENTS.md](docs/POST_SUBMISSION_IMPROVEMENTS.md)

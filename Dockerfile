@@ -2,7 +2,8 @@
 # Self-contained and disk-free: the verified corpus (gitignored locally) is downloaded from the
 # repo's public GitHub Release at build time, so this runs on a free host with no persistent disk
 # (e.g. Render free). Keyless by default; an operator may explicitly select an optional provider.
-ARG SEED_URL=https://github.com/arathii23/finn-enam/releases/download/corpus-2026-11-03/finn-seed.tar.gz
+# Seed built 2026-11-04 (84 documents). Rollback: corpus-2026-11-03 (28 documents, 124 MB).
+ARG SEED_URL=https://github.com/arathii23/finn-enam/releases/download/corpus-2026-11-04/finn-seed.tar.gz
 
 FROM node:22-slim AS web
 WORKDIR /web

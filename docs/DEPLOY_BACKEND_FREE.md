@@ -35,9 +35,11 @@ is left in place by this change; it is simply not used while the provider is `ke
   `gh-pages` branch as a normal fast-forward commit (no force push). See `docs/DEPLOY_FREE.md`.
 - **Rollback references (4 November 2026):** source `main` was `472813c` before the update;
   `gh-pages` was `d1b5bc1`. Check out those commits to restore the earlier source or static demo.
+  The seed rollback is the earlier Release `corpus-2026-11-03` (28 documents, 124 MB): point the
+  `SEED_URL` line in the `Dockerfile` back at it. Keep both Releases.
 
 ## Prerequisites (free)
-1. The corpus **GitHub Release** `corpus-2026-11-03` (asset `finn-seed.tar.gz`) must stay available;
+1. The corpus **GitHub Release** `corpus-2026-11-04` (asset `finn-seed.tar.gz`) must stay available;
    the Docker build downloads it. It holds the genuine saved demonstrations. Never replace it with a
    QA or temporary database.
 2. A free **Render** account connected to GitHub (no card).
@@ -64,9 +66,11 @@ is left in place by this change; it is simply not used while the provider is `ke
   message and a Retry action, because documents already read are stored. The retries finished in
   about 25 seconds. No out-of-memory restart occurred in these runs; the service stayed healthy.
 - **Ephemeral store:** documents discovered at run time live in the instance's disk and are lost on
-  restart or redeploy (the corpus returned from 34 to the 28-document seed after a deploy). The
-  seeded saved briefs persist because they are baked into the image. The browser notebook keeps
-  its own data in the user's browser.
+  redeploy, restart **and spin-down** (Render's free-tier documentation says all local files, including
+  SQLite, are lost in those cases). I measured only the redeploy case (the corpus returned from 34 to
+  the 28-document seed), but the 15-minute idle spin-down applies the same rule, so an idle instance
+  forgets what it discovered. The seeded saved briefs persist because they are baked into the image.
+  The browser notebook keeps its own data in the user's browser.
 - **Sleep:** free instances sleep after about 15 minutes idle and take roughly a minute to wake.
   The static demo is the always-instant link.
 
@@ -75,3 +79,38 @@ is left in place by this change; it is simply not used while the provider is `ke
 - The first research request for a company that is not in the seed can need one retry.
 - NSE access from a datacenter can change; failures surface as named source gaps, not as all-clear.
 - Budget guards remain ($5 total, $0.25 per job). They are ceilings, not permission to spend.
+
+## Larger seed corpus (built and published on 4 November 2026)
+
+Because the free instance forgets what it discovers, the practical fix is to ship more verified
+documents inside the image's seed. `scripts/build_seed.py` builds one from an isolated copy of the
+production store, using the same discovery code the live service runs (refresh mode, cutoff = now,
+keyless, no model). Stages: `prepare`, `discover`, `verify`, `pack`. The production database was
+never written (its SHA-256 was identical before and after).
+
+**What the 4 November build produced** (`data/seed_build_2026_11_04/`, git-ignored):
+- 56 new documents, all with verified publication proof; 84 documents and 27,570 passages in total.
+- Current FY2025-26 annual report for 14 of 15 holdings (UltraTech's is excluded, see below); latest
+  call transcripts with a verified management roster for 6 holdings (Infosys to 28 Oct 2026,
+  HCLTech 15 Oct, HDFC Bank 23 Oct, Sun Pharma 6 Aug, UltraTech 27 Oct, CERA 12 Aug).
+- Integrity checks passed: all 28 original documents unchanged, saved briefs identical, 108 replay
+  read models compared with only the 15 "excluded documents" lists growing (newer files are
+  correctly labelled as published after the replay cutoff), and 43 of 43 keyless quotes exact.
+- A fresh extract booted keyless from the tarball (176 of 176 files matched their manifest hashes;
+  `integrity_check` ok). The two current questions that exceeded 180 seconds on Render finished on
+  the first attempt in 10 and 15 seconds on a Mac. Render's CPU is much slower; its earlier retry
+  with stored documents took about 25 seconds, which is the realistic expectation.
+
+**Gaps that stay gaps (the identity gates were not loosened):**
+- Reliance (Media & Analyst Meet format), Bharti (the heading "Final Transcript" is read as a speaker
+  and dialogue is unverified) and UltraTech (annual-report cover text unreadable) are excluded for
+  "document identity check failed".
+- ICICI Bank, HUL and Titan transcripts (and two of HDFC Bank's four) are eligible but have no verified
+  management roster, so the product shows them without presenting speakers as management.
+- Astral, L&T, Maruti and Trent transcript candidates were one-page exchange cover letters (16 such
+  files, 9 typed as transcripts and 7 as annual reports, all correctly excluded); no current transcript was found for those four.
+
+**Costs to weigh before publishing:** the tarball is **423 MB** (the current release is 124 MB) and
+unpacks to about **550 MB** on the instance's disk (about 160 MB now). Render's free-tier disk and
+build limits are not documented precisely, so measure the first build. The seed is dated (shown in
+`SEED_MANIFEST.json`); filings after that date still need the on-demand check.
