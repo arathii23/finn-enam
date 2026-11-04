@@ -233,7 +233,7 @@ function LivePricesCard({ onOpenCompany, priceMovePct, volumeMultiple }: { onOpe
             <>
               <p className="fine">{data.summary.ok}/{data.summary.companies} available · {data.summary.flagged} flagged at {data.thresholds.price_move_pct}% / {data.thresholds.volume_multiple}× · checked {relativeTime(data.retrieved_at)}{loading ? " · refreshing…" : ""}</p>
               <button className={`btn btn-small${flaggedOnly ? " selected" : ""}`} aria-pressed={flaggedOnly} onClick={() => setFlaggedOnly(!flaggedOnly)}>{flaggedOnly ? "Show all holdings" : "Show flagged holdings"}</button>
-              <div className="table-wrap"><table className="eod-table"><caption>Daily close, change versus the previous session, and volume multiple. Raw prices; no filing causation is inferred.</caption><thead><tr><th scope="col">Company / session</th><th scope="col">Close</th><th scope="col">Day</th><th scope="col">Vol×</th></tr></thead>
+              <div className="table-wrap"><table className="eod-table"><caption>Daily close, change versus the previous session, and volume multiple. A dash means the source did not report the previous session, so no change is calculated. Raw prices; no filing causation is inferred.</caption><thead><tr><th scope="col">Company / session</th><th scope="col">Close</th><th scope="col">Day</th><th scope="col">Vol×</th></tr></thead>
                 <tbody>{shown.map((c) => (
                   <tr key={c.symbol} className={c.anomaly?.flagged ? "flagged-row" : ""}>
                     <td><button className="market-company" onClick={() => onOpenCompany(c.symbol)}>{c.symbol}</button><span className="sub">{c.latest?.trading_date ? shortDate(c.latest.trading_date) : "Session unavailable"}</span></td>
