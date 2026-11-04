@@ -3,7 +3,8 @@ name: Refresh live prices
 # Free, serverless live data: a scheduled job fetches Yahoo EOD and publishes live_prices.json
 # to the `live-data` branch (force-pushed as a single commit, so history stays tiny and GitHub
 # Pages is never rebuilt). The static site fetches it cross-origin from raw.githubusercontent.com
-# and shows "last updated". GitHub's scheduler may run every ~5-15 min under load.
+# and shows "last updated". The cron is best-effort: GitHub throttles scheduled runs on quiet
+# repositories (observed gaps of several hours), so rely on the timestamp, not the interval.
 
 on:
   schedule:

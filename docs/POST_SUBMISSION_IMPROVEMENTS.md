@@ -71,10 +71,10 @@ These workflow choices have been exercised locally, not validated through invest
 | Ask a question and inspect exact primary evidence | Query-aware current/historical research, generic discovery, exact passage/PDF links and explicit gaps. Broader issuer/layout coverage remains a bounded-source problem. |
 | Guidance versus delivery | Existing conservative annual comparison retained, with comparability gates and pending outcomes. No claim of a complete four-quarter promise history. |
 | Quarterly numbers versus prior quarter/year | Existing verified tables and omissions retained. Four prepared tables have 3/3/3/2 metrics; INFY has verified YoY but no verified QoQ. Fresh arbitrary-layout extraction is not certified. |
-| Free to use without a model key | Default keyless extracts, saved research, deterministic views and notebook work without model generation. Optional synthesis uses operator-selected credentials and account quotas. |
+| Free to use without a model key | Published and verified: the hosted app reports `keyless`, makes no model calls, and serves extracts, saved research and the notebook. Optional synthesis uses operator-selected credentials and account quotas. |
 | Options beyond Gemini | Groq and free-only OpenRouter adapters and operator setup are implemented. Real-key access and source-level answer quality for these new providers are unverified. |
-| Live prices refresh every few minutes | Existing scheduled feed retained, with actual session dates and failed/stale checks visible. Scheduler timing and public Yahoo data are best-effort; this is not an intraday or licensed real-time feed. |
-| Phone access without login | Responsive live/static builds retained and mobile browser checks performed. A physical second-device check and updated hosted deployment are separate gates. |
+| Live prices refresh every few minutes | **Not met as a measured cadence.** The workflow is scheduled every five minutes, but GitHub ran it hours apart on 3 to 4 November (19:51Z, 00:18Z, 06:43Z; plus manual runs). The page shows the feed's real check time and each row's trading date, so staleness is visible. Public Yahoo data, not an intraday or licensed real-time feed. |
+| Phone access without login | Responsive live and static builds are published at the existing URLs. 21 browser layout checks (7 views at 360, 390 and 430 px) passed on the hosted app; this is emulation, not a physical phone. A real-device open of both URLs remains an owner check. |
 
 ## Verification and limits
 
@@ -112,3 +112,54 @@ These workflow choices have been exercised locally, not validated through invest
 
 For provider setup, see [FREE_RESOURCES.md](FREE_RESOURCES.md). For publication order and the
 existing link configuration, see [DEPLOY_FREE.md](DEPLOY_FREE.md).
+
+## Hosted publication and verification (Claude Code, 4 November 2026)
+
+Published to the existing destinations: source `main` and the Render service (auto-deploy from
+`main`), and the GitHub Pages `gh-pages` branch. Rollback references: `main` `472813c` and
+`gh-pages` `d1b5bc1`. Final published revisions are recorded in `BUILD_STATUS.md`.
+
+**Passed on the public Render app (keyless, no model calls):**
+- `/api/health`: `keyless`, 28-document seed corpus intact, `capabilities.current_source_research=true`.
+- Three genuine saved briefs listed; a saved Infosys evidence sheet opened with proof and hash;
+  Escape closed it and restored focus; the cached annual-report PDF streamed.
+- Explicit seven-day current check from Render's datacenter: 14/15 holdings validated, 53
+  announcements, SUNPHARMA left visibly partial (one record failed validation); repeat served from
+  the 15-minute cache at its original timestamps. The Review page names the failed holding.
+- "Read & research filing" for a Sun Pharma results notice and a focused current Infosys guidance
+  question. The Infosys brief led with the 28 October 2026 call (revenue guidance 1% to 2% constant
+  currency; operating margin 20% to 22%) with the assumptions passage cited as grouped context;
+  5/5 highlights were exact substrings of their cited passages (checked through the evidence API).
+- Identical question reuse (`reused: true`); an unsupported topic now abstains (below).
+- Static-to-live handoff: the live app received the symbol and a question containing `&` intact and
+  made zero research requests until the explicit "Run this question" click.
+- Notebook on the hosted app: cited two-page quote saved, personal note added, reload kept it,
+  marked followed up, Markdown export kept both PDF pages, speaker, publication time, passage ids,
+  URL, SHA-256, evidence cutoff and the question.
+- 21 layout checks (7 views at 360, 390 and 430 px): no page overflow, no tap target under 40 px.
+
+**Defects found by this verification and fixed (216 backend tests now pass):**
+1. A question about topics in no stored source (a lunar data centre, underwater cables) returned six
+   confident pension-plan extracts matched on "plans" and "data". Retrieval now finds which question
+   words appear in no eligible document, requires stronger overlap when some are missing, abstains
+   when at least two are missing and they are half the question, and names them as a gap.
+2. "What did management say about X" led with an annual-report note; management's own statements now
+   come first.
+3. Call-opening greetings were selected as highlights; they are excluded.
+4. The 180-second research limit showed a raw `TimeoutError`; it now says documents read so far are
+   saved and Retry continues.
+5. A bare "—" in the market table now explains that the source did not report the previous session.
+
+**Limits observed (not fixed):**
+- The first current read of a company not in the seed exceeds the 180-second guard on the free
+  CPU (Sun Pharma's 345-page annual report; Infosys). Progress is stored and the retry finished in
+  about 25 seconds. Newly discovered documents vanish on redeploy (ephemeral store).
+- Brief highlights outside the management section are keyword matches and can be loosely related
+  (an annual-report ratio table, an older filing's impairment assumptions).
+- Quotes are exact text from the PDF text layer and carry its spacing artefacts ("cauti ous").
+- The price feed is best-effort (see the matrix); six holdings showed no daily change because Yahoo
+  returned an empty 3 November bar for them.
+
+**Not verified:** a real-key Groq/OpenRouter/Gemini answer; a physical phone; a container build on this
+Mac (the Render build is the build evidence). No provider key was used, no account was created and no
+charge was incurred.

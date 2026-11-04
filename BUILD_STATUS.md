@@ -1,6 +1,32 @@
 # FINN build status
 
-Updated 4 November 2026 (IST). **The user reports that FINN has already been submitted, with the existing GitHub Pages and Render links. This continuation improves the local product after that submission.** The current working tree adds explicit current-filing checks, current-source research, a personal research notebook, better question relevance and free-provider choices beyond Gemini. It has not published an update to those existing links. Earlier dated entries describe their own checkpoints and do not establish today's submission or deployment state.
+Updated 4 November 2026 (IST). **FINN has been submitted to ENAM. The post-submission improvements are now published to the existing destinations and verified from the public network: source `main` and the Render app (https://finn-mow9.onrender.com, keyless), and the GitHub Pages demo (https://arathii23.github.io/finn-enam/).** 216 backend tests pass; live and static builds pass. A physical-phone check and real-key Groq/OpenRouter/Gemini quality remain pending. No new email was sent and no charge, account or provider key was used. Earlier dated entries describe their own checkpoints.
+
+## 4 November 2026 (later) — published and verified on the existing links (Claude Code)
+
+Full evidence and limits: [docs/POST_SUBMISSION_IMPROVEMENTS.md](docs/POST_SUBMISSION_IMPROVEMENTS.md)
+(section "Hosted publication and verification"). Deployment steps and rollback:
+[docs/DEPLOY_BACKEND_FREE.md](docs/DEPLOY_BACKEND_FREE.md), [docs/DEPLOY_FREE.md](docs/DEPLOY_FREE.md).
+
+**Published revisions:** source `main` `89d979f` (code; later commits are documentation only), Render
+auto-deployed from `main`, `gh-pages` `619eed8`. Rollback: `main` `472813c`, `gh-pages` `d1b5bc1`.
+
+**Hosted checks that passed (keyless, no model calls):** health and seed corpus; saved research and
+evidence sheet focus behaviour; an explicit current NSE check from Render (14/15 validated, SUNPHARMA
+visibly partial); a current Sun Pharma filing read and a focused Infosys guidance question (5/5 highlights
+exact substrings); static-to-live question handoff without auto-submit; notebook save, reload, done and
+Markdown export with provenance; 21 layout checks at 360, 390 and 430 px.
+
+**Fixed after finding on the public app:** abstention for topics absent from every source, management-first
+ordering, call-opening greetings, a raw timeout message, and an unexplained dash in the market table.
+
+**Observed limits:** the first current read of a new company exceeds the 180-second guard on the free CPU and
+needs one Retry (progress is stored); discovered documents are lost on redeploy; the price feed runs hours
+apart, not every five minutes; quotes carry the PDF text layer's spacing artefacts.
+
+**Still pending (owner or later):** open both URLs on a physical phone; real-key Groq/OpenRouter/Gemini
+quality (keyless is active, no key was used); a durable store if server-side history is wanted.
+
 
 ## 4 November 2026 — practical investor workflow after submission (Codex)
 
