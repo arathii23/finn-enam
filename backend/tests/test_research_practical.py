@@ -170,3 +170,51 @@ def test_wrong_company_filing_is_rejected_before_work_is_queued(env):
         response=client.post('/api/research',json={'symbol':'OTHERCO','mode':'live','event_id':event['announcement_id']})
         assert response.status_code==409 and response.json()['detail']['state']=='invalid_event'
     assert not store.query('SELECT * FROM jobs')
+
+
+def test_topic_need_requires_overlap_or_abstains_when_sources_cannot_answer():
+    from finn.retrieval import _topic_need
+    terms = ["plans", "lunar", "data", "centre", "underwater", "cables"]
+    # Nothing missing: previous behaviour, one matching term suffices.
+    assert _topic_need(["dividend", "policy"], []) == 1
+    # Several terms exist in no source and only one is findable: abstain.
+    assert _topic_need(["lunar", "underwater", "cables", "data"], ["lunar", "underwater", "cables"]) is None
+    # Half or more of the question is absent from every source: abstain even if other words are generic.
+    assert _topic_need(terms, ["lunar", "underwater", "cables"]) is None
+    # Some terms missing but several findable: a lone generic word is not enough.
+    assert _topic_need(terms, ["lunar", "underwater"]) == 2
+    # A single missing word in a short question does not block an otherwise answerable question.
+    assert _topic_need(["dividend", "payout"], ["payout"]) == 1
+
+
+def test_question_about_a_topic_absent_from_the_sources_names_it_and_shows_no_extracts(env):
+    settings, store, _ = build(env)
+    company = nse.resolve_company(store, "TESTCO")
+    _, output = run_research(store, settings, load_manifest(settings.manifest_path), company,
+                             ResearchRequest(symbol="TESTCO",
+                                             question="What are the plans for a lunar data centre and underwater cables?"),
+                             None, None, lambda s: None)
+    assert not output.evidence_index
+    assert not (output.source_brief and output.source_brief.highlights)
+    named = [g.text for g in output.evidence_gaps if g.kind == "question" and "mention:" in g.text]
+    assert named and all(word in named[0] for word in ("lunar", "underwater", "cables"))
+    assert not store.query("SELECT * FROM model_calls")
+
+
+def test_asking_what_management_said_leads_with_management_not_an_annual_report_note():
+    ar = passage("Actuarial assumptions include attrition rates and mortality tables used for the valuation of obligations.",
+                 pid="ar1", kind="annual_report")
+    call = passage("Voluntary attrition declined to 12 percent in the quarter and we expect it to stay in this range.", pid="mc1")
+    brief = build_source_brief({"business_context": [ar], "management_commentary": [call]},
+                               "What did management say about attrition?")
+    assert brief.highlights and brief.highlights[0].kind == "management_commentary"
+
+
+def test_research_deadline_is_reported_in_plain_language_with_a_retry_hint(env):
+    settings, store, _ = build(env)
+    app = App(replace(settings, research_deadline_s=0), store=store, start_worker=False)
+    job = app.submit_research(ResearchRequest(symbol="TESTCO", question="What is the revenue guidance?"))["job_id"]
+    app.run_job(job)
+    row = app.job(job)
+    assert row["state"] == "failed"
+    assert "Retry" in row["error"] and "TimeoutError" not in row["error"]

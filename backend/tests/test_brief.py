@@ -85,3 +85,23 @@ def test_repeated_bundled_guidance_keeps_distinct_assumptions_and_changed_figure
     ids = {h.evidence_id for h in brief.highlights}
     assert {"media", "basis", "changed"} == ids
     assert next(h.quote for h in brief.highlights if h.evidence_id == "basis") in conditions["text"]
+
+
+def test_call_opening_greetings_are_not_highlights():
+    greeting = ("Welcome, and thank you for joining us for the earnings call after the announcement "
+                "of financial results for the first quarter of FY 2027.")
+    substantive = "We expect gross margin to remain near 20 percent, subject to input costs and demand."
+    brief = build_source_brief(
+        {"management_commentary": [
+            _mc(greeting, speaker="Host", pid="p_greet"),
+            _mc(substantive, speaker="Salil Parekh", pid="p_real")]},
+        question="results announcement and margin conditions")
+    quotes = [h.quote for h in brief.highlights]
+    assert any("gross margin" in q for q in quotes)
+    assert not any(q.startswith("Welcome") for q in quotes)
+
+
+def test_substantive_sentence_mentioning_welcome_midway_is_kept():
+    text = "Demand improved in the quarter, and we welcome the new pricing framework, subject to approvals."
+    brief = build_source_brief({"management_commentary": [_mc(text, pid="p_keep")]}, question="pricing approvals")
+    assert any("pricing framework" in h.quote for h in brief.highlights)
