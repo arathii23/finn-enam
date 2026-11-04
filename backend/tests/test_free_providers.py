@@ -190,3 +190,18 @@ def test_quota_failure_completes_with_cited_source_brief(env):
     for highlight in out.source_brief.highlights:
         source = store.query_one("SELECT text FROM passages WHERE passage_id=?", (highlight.evidence_id,))
         assert highlight.quote.rstrip("…").strip() in source["text"]
+
+
+def test_health_reports_the_shipped_seed_when_a_manifest_is_present(env):
+    import json
+    from dataclasses import replace as _replace
+    from finn.service import App
+    settings, store, _, _ = env
+    assert App(settings, store=store, start_worker=False).health()["seed"] is None
+    (settings.data_dir / "SEED_MANIFEST.json").write_text(json.dumps(
+        {"seed_built_at": "2026-11-04T08:42:25+00:00", "source_commit": "b94a31b7d6c4",
+         "counts": {"document_versions": 84, "passages": 27570}}))
+    seed = App(settings, store=store, start_worker=False).health()["seed"]
+    assert seed == {"built_at": "2026-11-04T08:42:25+00:00", "documents": 84, "passages": 27570, "source_commit": "b94a31b"}
+    (settings.data_dir / "SEED_MANIFEST.json").write_text("not json")
+    assert App(settings, store=store, start_worker=False).health()["seed"] is None

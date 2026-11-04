@@ -75,8 +75,23 @@ class App:
                              "source_refresh": "explicit_research_request", "refresh_cache_seconds": SOURCE_REFRESH_CACHE_S},
             "replay": self.replay_info(),
             "corpus": counts,
+            "seed": self._seed_info(),
             "frontend_built": (self.settings.frontend_dist / "index.html").exists(),
         }
+
+    def _seed_info(self) -> Optional[Dict[str, Any]]:
+        """When the shipped seed corpus was built, from the manifest packed with it (None if absent).
+
+        Documents discovered at run time are not part of the seed, so this identifies what the image
+        started with, independent of the live document count."""
+        path = self.settings.data_dir / "SEED_MANIFEST.json"
+        try:
+            manifest = json.loads(path.read_text())
+            counts = manifest.get("counts") or {}
+            return {"built_at": manifest.get("seed_built_at"), "documents": counts.get("document_versions"),
+                    "passages": counts.get("passages"), "source_commit": (manifest.get("source_commit") or "")[:7] or None}
+        except (OSError, ValueError, AttributeError):
+            return None
 
     def replay_info(self) -> Optional[Dict[str, Any]]:
         if not self.replay:
