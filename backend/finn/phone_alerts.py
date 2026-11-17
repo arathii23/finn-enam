@@ -12,7 +12,7 @@ import re
 import secrets
 import time
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlparse
 
@@ -69,9 +69,12 @@ class RedisPhoneStore:
     def save(self, identity: str, record: dict):
         script = """
         if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 0 and redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
-        redis.call('HSET', KEYS[1], ARGV[1], ARGV[2]); return 1
+        redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+        if ARGV[4] == 'queued' then redis.call('HSET', KEYS[2], ARGV[1], '1') else redis.call('HDEL', KEYS[2], ARGV[1]) end
+        return 1
         """
-        if not self.command("EVAL", script, 1, PREFIX + "subscriptions", identity, json.dumps(record), MAX_SUBSCRIPTIONS):
+        if not self.command("EVAL", script, 2, PREFIX + "subscriptions", PREFIX + "test-queue", identity,
+                            json.dumps(record), MAX_SUBSCRIPTIONS, record.get("test_state") or ""):
             raise PhoneError("The free alert service is full. Please try again later.", 503)
 
     def all(self):
@@ -79,7 +82,11 @@ class RedisPhoneStore:
         return {rows[i]: json.loads(rows[i + 1]) for i in range(0, len(rows), 2)}
 
     def delete(self, identity: str):
-        self.command("HDEL", PREFIX + "subscriptions", identity)
+        self.command("EVAL", "redis.call('HDEL', KEYS[1], ARGV[1]); return redis.call('HDEL', KEYS[2], ARGV[1])",
+                     2, PREFIX + "subscriptions", PREFIX + "test-queue", identity)
+
+    def pending_tests(self):
+        return self.command("HKEYS", PREFIX + "test-queue") or []
 
     @contextmanager
     def lock(self, name: str, seconds: int = 90):
@@ -178,6 +185,7 @@ class PhoneAlerts:
             if record is None:
                 raise PhoneError("Save your company choices first.", 404)
             if record.get("test_state") == "queued":
+                store.save(identity, record)
                 return {"accepted": False, "queued": True}
             if not store.allowance("test:" + identity, 1, 60):
                 raise PhoneError("Wait a minute before sending another test.", 429)
@@ -194,12 +202,16 @@ class PhoneAlerts:
         result = {"queued": 0, "sent": 0, "failed": 0}
         with store.lock("test-dispatch", 600):
             deadline = time.monotonic() + 150
-            for identity in store.all():
+            for identity in store.pending_tests():
                 if time.monotonic() >= deadline:
                     break
                 with store.lock(identity):
                     record = store.get(identity)
                     if record is None or record.get("test_state") != "queued":
+                        if record is None:
+                            store.delete(identity)
+                        else:
+                            store.save(identity, record)
                         continue
                     result["queued"] += 1
                     if dry_run:
@@ -243,7 +255,8 @@ class PhoneAlerts:
             status = {"checked_at": timestamp(), "holdings_checked": len(checked), "holdings_total": len(self.symbols),
                       "unchecked_symbols": sorted(self.symbols - checked),
                       "dry_run": dry_run, "sent": 0, "failed": 0, "matched_devices": 0, "deferred": 0}
-            order = sorted(subscriptions, key=lambda identity: (subscriptions[identity].get("last_delivery_at") or "", identity))
+            eligible = [identity for identity, record in subscriptions.items() if record["active"] and self._matching(record, candidates)]
+            order = sorted(eligible, key=lambda identity: (subscriptions[identity].get("last_delivery_at") or "", identity))
             for position, identity in enumerate(order):
                 if time.monotonic() >= deadline:
                     status["deferred"] += len(order) - position
@@ -263,9 +276,12 @@ class PhoneAlerts:
                         daily = record.get("daily", {"date": today, "count": 0})
                         if daily["date"] != today:
                             daily = {"date": today, "count": 0}
-                        if daily["count"] >= MAX_DAILY_PER_DEVICE or not store.allowance("delivery:" + today, DAILY_BUDGET, 172800):
+                        if daily["count"] >= MAX_DAILY_PER_DEVICE:
                             status["deferred"] += 1
                             continue
+                        if not store.allowance("delivery:" + today, DAILY_BUDGET, 172800):
+                            status["deferred"] += len(order) - position
+                            break
                         batch = pending[:5]
                         message = self._message(batch)
                         while len(message["body"].encode("utf-8")) > 4000:
@@ -274,6 +290,8 @@ class PhoneAlerts:
                         self.sender(record["topic"], message)
                         now = timestamp()
                         sent = dict(record.get("sent", {}))
+                        cutoff = datetime.now(timezone.utc) - timedelta(days=8)
+                        sent = {key: published for key, published in sent.items() if datetime.fromisoformat(published) >= cutoff}
                         for item in batch:
                             sent[item.get("dedupe_key") or item["key"]] = item["published_at"]
                         record.update(sent=dict(sorted(sent.items(), key=lambda row: row[1])[-1000:]),

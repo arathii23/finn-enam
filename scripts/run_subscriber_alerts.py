@@ -41,7 +41,7 @@ def main():
         tests = manager.deliver_tests(dry_run=args.dry_run)
         last = store.status()
         recent = last and (datetime.now(timezone.utc) - datetime.fromisoformat(last['checked_at'])).total_seconds() < 29 * 60
-        if args.scheduled and recent:
+        if args.scheduled and (recent or not store.allowance('filing-check-interval', 1, 29 * 60)):
             print(json.dumps({'tests': tests, 'filings': 'next filing check is not due yet'}))
             return 1 if tests['failed'] else 0
         with httpx.Client(timeout=120, follow_redirects=False) as client:

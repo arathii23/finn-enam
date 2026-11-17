@@ -37,6 +37,9 @@ class MemoryStore:
     def delete(self, identity):
         self.rows.pop(identity, None)
 
+    def pending_tests(self):
+        return [identity for identity, record in self.rows.items() if record.get("test_state") == "queued"]
+
     @contextmanager
     def lock(self, identity, seconds=90):
         if identity in self.locks:
@@ -315,3 +318,11 @@ def test_user_setup_needs_storage_without_optional_admin_preview_credential(env,
         response = client.put('/api/phone/subscription', headers={'Authorization': 'Bearer ' + TOKEN_A},
                               json={'symbols': ['INFY'], 'groups': ['results']})
         assert response.status_code == 200
+
+
+def test_idle_profiles_do_not_require_individual_storage_reads(phone, monkeypatch):
+    manager, store, _ = phone
+    enable(manager)
+    monkeypatch.setattr(store, 'get', lambda *_: pytest.fail('Idle profiles should not require per-user reads'))
+    assert manager.deliver_tests()['queued'] == 0
+    assert dispatch(manager, [])['sent'] == 0
