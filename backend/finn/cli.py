@@ -153,6 +153,19 @@ def cmd_alerts(args) -> int:
     from .sources import nse
     from .service import App
 
+    topic = args.topic or os.environ.get("NTFY_TOPIC", "")
+    try:
+        if args.test:
+            if not alerts.send_test_notification(topic):
+                print("ntfy did not accept the test alert.", file=sys.stderr)
+                return 2
+            print("ntfy accepted one test alert. Confirm receipt on the phone.")
+            return 0
+        since = alerts.parse_start_at(args.since) if args.since is not None else None
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
     # Alerts are deterministic and remain model-free regardless of shell/.env keys.
     s = replace(get_settings(), model_provider="keyless")
     app = App(s, start_worker=False)
@@ -173,12 +186,14 @@ def cmd_alerts(args) -> int:
     from .current import refresh_portfolio_sources
     refresh = refresh_portfolio_sources(app.store, s, symbols, app.fetcher_factory, args.days)
     queue = app.portfolio_queue(mode="live", window="7d")
-    prices = json.loads(Path(args.prices).read_text()) if args.prices and Path(args.prices).is_file() else (
-        {} if args.prices else app.live_prices(symbols=symbols))
+    prices = {}
+    if not args.filings_only:
+        prices = json.loads(Path(args.prices).read_text()) if args.prices and Path(args.prices).is_file() else (
+            {} if args.prices else app.live_prices(symbols=symbols))
     checked = {row["symbol"] for row in refresh.get("companies", []) if row.get("state") == "fetched"}
     candidates = alerts.build_notifications(queue, prices, checked_symbols=checked,
                                            extra_categories=alerts.categories_from_env(args.categories),
-                                           now=datetime.now(timezone.utc), days=args.days)
+                                           now=datetime.now(timezone.utc), days=args.days, since=since)
     state_path = Path(args.state).expanduser() if args.state else s.data_dir / "alerts_state.json"
     state = alerts.load_state(state_path)
     pending = alerts.pending_notifications(candidates, state)
@@ -188,7 +203,6 @@ def cmd_alerts(args) -> int:
         print(json.dumps({"dry_run": True, "refresh": refresh, "candidates": pending,
                           "pending": len(pending), "state_written": False}, indent=2, default=str))
     else:
-        topic = args.topic or os.environ.get("NTFY_TOPIC", "")
         next_state, outcomes = alerts.send_pending(pending, state, topic=topic)
         alerts.save_state(state_path, next_state)
         print(json.dumps({"dry_run": False, "refresh": refresh, "candidates": len(candidates),
@@ -299,8 +313,12 @@ def main(argv=None) -> int:
     al.add_argument("--state", help="deduplication state JSON path")
     al.add_argument("--status-out", help="optional latest-check summary JSON path")
     al.add_argument("--prices", help="read EOD flags from a saved live_prices.json instead of fetching")
+    al.add_argument("--filings-only", action="store_true", help="exclude price and volume alerts")
+    al.add_argument("--since", help="earliest eligible filing, ISO 8601 timestamp with a timezone")
     al.add_argument("--topic", help="ntfy topic (otherwise read NTFY_TOPIC from the environment)")
-    al.add_argument("--dry-run", action="store_true", help="list notifications without sending or updating state")
+    mode = al.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="list notifications without sending or updating state")
+    mode.add_argument("--test", action="store_true", help="send one clearly labelled phone test without checking files")
     al.set_defaults(fn=cmd_alerts)
     dg = sub.add_parser("digest", help="build a local, keyless subject-line portfolio digest")
     dg.add_argument("--days", type=int, choices=[7], default=7)
