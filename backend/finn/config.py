@@ -48,6 +48,9 @@ class Settings:
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     groq_api_key: Optional[str] = None
     openrouter_api_key: Optional[str] = None
+    phone_redis_url: Optional[str] = None
+    phone_redis_token: Optional[str] = None
+    phone_job_token: Optional[str] = None
 
     @property
     def db_path(self) -> Path:
@@ -97,6 +100,9 @@ def get_settings() -> Settings:
             os.environ.get("FINN_PORTFOLIO_MANIFEST", REPO_ROOT / "manifests" / "portfolio.json")
         ).resolve(),
         frontend_dist=Path(os.environ.get("FINN_FRONTEND_DIST", REPO_ROOT / "frontend" / "dist")).resolve(),
+        phone_redis_url=os.environ.get("UPSTASH_REDIS_REST_URL") or None,
+        phone_redis_token=os.environ.get("UPSTASH_REDIS_REST_TOKEN") or None,
+        phone_job_token=os.environ.get("FINN_PHONE_ALERTS_JOB_TOKEN") or None,
         openai_api_key=os.environ.get("OPENAI_API_KEY") or None,
         openai_base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         # Model choice follows the pre-build specification section 6; it is configurable

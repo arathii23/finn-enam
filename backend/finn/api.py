@@ -7,17 +7,33 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .contracts import ResearchRequest
 from .service import App, NotFound
 
 
-def create_app(service: Optional[App] = None) -> FastAPI:
+def create_app(service: Optional[App] = None, *, phone_manager=None) -> FastAPI:
     settings = service.settings if service is not None else get_settings()
     svc = service or App(settings)
     api = FastAPI(title="FINN", version="0.1.0-m1")
     api.state.svc = svc
+    # The Pages app uses authenticated phone alert routes on the live host.
+    api.add_middleware(CORSMiddleware, allow_origins=["https://arathii23.github.io", "https://finn-mow9.onrender.com",
+                                                    "http://localhost:5173", "http://127.0.0.1:5173"],
+                       allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
+
+    @api.middleware("http")
+    async def private_phone_responses(request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/phone/"):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
+    from .phone_api import phone_router
+    api.include_router(phone_router(svc, phone_manager))
 
     def wrap(fn, *args, **kwargs):
         try:
