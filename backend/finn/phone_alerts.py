@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import secrets
 import time
@@ -186,6 +187,8 @@ class PhoneAlerts:
             try:
                 self.sender(record["topic"], item)
             except Exception as exc:
+                provider_status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+                logging.getLogger(__name__).warning("Phone test delivery failed (%s, HTTP %s)", type(exc).__name__, provider_status)
                 raise PhoneError("The notification service could not accept the test. Wait a minute and try again.", 502) from exc
             record["test_accepted_at"] = timestamp()
             store.save(identity, record)
