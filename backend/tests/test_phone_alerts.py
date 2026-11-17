@@ -73,6 +73,7 @@ def enable(manager, token=TOKEN_A, symbols=None, groups=None):
     symbols, groups = symbols or ["INFY"], groups or ["results"]
     manager.save(token, symbols, groups, False, "client")
     manager.test(token)
+    manager.deliver_tests()
     return manager.save(token, symbols, groups, True, "client")
 
 
@@ -110,6 +111,9 @@ def test_test_and_enable_are_separate_explicit_actions(phone):
         manager.save(TOKEN_A, ["INFY"], ["results"], True, "client")
     assert calls == []
     manager.test(TOKEN_A)
+    assert calls == [] and manager.get(TOKEN_A)["test_state"] == "queued"
+    assert manager.test(TOKEN_A)["queued"] is True
+    manager.deliver_tests()
     assert len(calls) == 1 and manager.get(TOKEN_A)["active"] is False
     with pytest.raises(PhoneError) as error:
         manager.test(TOKEN_A)
@@ -199,7 +203,8 @@ def test_api_auth_cors_and_private_responses(env, phone):
         assert client.post("/api/phone/dispatch", headers=headers).status_code == 401
         preflight = client.options("/api/phone/subscription", headers={"Origin": "https://untrusted.example", "Access-Control-Request-Method": "PUT"})
         assert "access-control-allow-origin" not in preflight.headers
-        assert client.post("/api/phone/test", headers=headers).json()["accepted"] is True and len(calls) == 1
+        assert client.post("/api/phone/test", headers=headers).json()["queued"] is True and calls == []
+        assert manager.deliver_tests()["sent"] == 1
         assert client.delete("/api/phone/subscription", headers=headers).status_code == 200
 
 
@@ -280,3 +285,33 @@ def test_bundle_opens_a_public_source_on_a_separate_phone(phone):
     assert message['click_url'].startswith('https://nsearchives.nseindia.com/corporate/')
     assert '#/alerts' not in message['click_url']
     assert 'first.pdf' in message['body'] and 'second.pdf' in message['body']
+
+
+def test_queued_test_retries_after_throttling_and_delete_cancels_delivery(phone):
+    manager, store, calls = phone
+    manager.save(TOKEN_A, ['INFY'], ['results'], False, 'client')
+    assert manager.test(TOKEN_A)['queued'] is True
+    assert calls == []
+    def throttled(*_):
+        raise httpx.HTTPStatusError('limited', request=httpx.Request('POST', 'https://ntfy.sh'), response=httpx.Response(429))
+    manager.sender = throttled
+    assert manager.deliver_tests()['failed'] == 1
+    assert manager.get(TOKEN_A)['test_state'] == 'queued'
+    assert manager.get(TOKEN_A)['test_accepted_at'] is None
+    manager.sender = lambda topic, item: calls.append((topic, item))
+    assert manager.deliver_tests()['sent'] == 1
+    assert manager.deliver_tests()['sent'] == 0 and len(calls) == 1
+    manager.save(TOKEN_B, ['INFY'], ['results'], False, 'client')
+    manager.test(TOKEN_B)
+    manager.delete(TOKEN_B)
+    assert manager.deliver_tests()['sent'] == 0
+
+
+def test_user_setup_needs_storage_without_optional_admin_preview_credential(env, phone):
+    settings, store, _, _ = env
+    manager, _, _ = phone
+    with TestClient(create_app(App(replace(settings, phone_job_token=None), store=store, start_worker=False), phone_manager=manager)) as client:
+        assert client.get('/api/phone/catalog').json()['available'] is True
+        response = client.put('/api/phone/subscription', headers={'Authorization': 'Bearer ' + TOKEN_A},
+                              json={'symbols': ['INFY'], 'groups': ['results']})
+        assert response.status_code == 200

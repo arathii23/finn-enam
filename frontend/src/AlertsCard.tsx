@@ -52,6 +52,26 @@ export function AlertsView({ initialCompany }: { initialCompany?: string }) {
     return () => { cancelled = true; };
   }, [reload, token, initialCompany]);
 
+  useEffect(() => {
+    if (!token || record?.test_state !== "queued") return;
+    let stopped = false;
+    let timer: number;
+    async function poll() {
+      try {
+        const value = await phoneApi.get(token!);
+        if (stopped) return;
+        setRecord(value);
+        if (value.test_state === "accepted") {
+          setNotice("Test accepted by ntfy. Check your phone for FINN · Your phone test, then confirm below.");
+          return;
+        }
+      } catch { /* Keep the queued test visible during a free-host cold start. */ }
+      if (!stopped) timer = window.setTimeout(poll, 8000);
+    }
+    timer = window.setTimeout(poll, 8000);
+    return () => { stopped = true; window.clearTimeout(timer); };
+  }, [token, record?.test_state]);
+
   async function act(work: () => Promise<void>) {
     setBusy(true); setError(""); setNotice("");
     try { await work(); }
@@ -135,11 +155,14 @@ export function AlertsView({ initialCompany }: { initialCompany?: string }) {
             <div className="phone-code"><code>{record.topic}</code><button className="btn btn-small" onClick={() => void copy(record.topic, "topic")}>{copied === "topic" ? "Copied" : "Copy topic"}</button></div>
           </li>
           <li>Tap <strong>Subscribe</strong> in ntfy. Then return here and send a test.
-            <button className="btn btn-block" disabled={busy || dirty} onClick={() => void act(async () => {
-              const result = await phoneApi.test(token!);
-              setRecord({ ...record, test_accepted_at: result.accepted_at });
-              setNotice("Test accepted. Check your phone for FINN · Your phone test, then confirm below.");
-            })}>{busy ? "Working…" : "Send a test to my phone"}</button>
+            <p className="fine">{catalog.test_cadence}</p>
+            <button className="btn btn-block" disabled={busy || dirty || record.test_state === "queued"} onClick={() => void act(async () => {
+              await phoneApi.test(token!);
+              const value = await phoneApi.get(token!);
+              setRecord(value);
+              setNotice(value.test_state === "accepted" ? "Test accepted by ntfy. Check your phone, then confirm below." : "Your test is queued. Keep this page open to see when ntfy accepts it.");
+            })}>{busy ? "Working…" : record.test_state === "queued" ? "Test queued · Waiting for delivery" : "Send a test to my phone"}</button>
+            {record.test_error && <p className="fine" role="status">{record.test_error}</p>}
           </li>
         </ol>
         <p className="fine">Keep the topic name private. Anyone who knows an ntfy topic can read or post to it. FINN sends public filing headlines and source links. <a href="https://docs.ntfy.sh/publish/#picking-a-topic" target="_blank" rel="noopener noreferrer">How topics work ↗</a></p>

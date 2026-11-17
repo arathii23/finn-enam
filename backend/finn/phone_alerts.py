@@ -129,7 +129,7 @@ class PhoneAlerts:
 
     @staticmethod
     def public(record: dict) -> dict:
-        return {key: record.get(key) for key in ("symbols", "groups", "active", "topic", "created_at", "updated_at", "enabled_at", "test_accepted_at", "last_delivery_at", "last_items")}
+        return {key: record.get(key) for key in ("symbols", "groups", "active", "topic", "created_at", "updated_at", "enabled_at", "test_requested_at", "test_accepted_at", "test_state", "test_error", "last_delivery_at", "last_items")}
 
     def get(self, token: str):
         record = self.require_store().get(self.identity(token))
@@ -171,28 +171,62 @@ class PhoneAlerts:
         return {"deleted": True}
 
     def test(self, token: str):
+        """Queue one test for the delivery worker without publishing from Render."""
         store, identity = self.require_store(), self.identity(token)
         with store.lock(identity):
             record = store.get(identity)
             if record is None:
                 raise PhoneError("Save your company choices first.", 404)
+            if record.get("test_state") == "queued":
+                return {"accepted": False, "queued": True}
             if not store.allowance("test:" + identity, 1, 60):
                 raise PhoneError("Wait a minute before sending another test.", 429)
-            if not store.allowance("test-day:" + identity + ":" + datetime.now(timezone.utc).date().isoformat(), 5, 172800):
+            today = datetime.now(timezone.utc).date().isoformat()
+            if not store.allowance("test-day:" + identity + ":" + today, 5, 172800):
                 raise PhoneError("This setup has used its five free tests today. Try again tomorrow.", 429)
-            if not store.allowance("delivery:" + datetime.now(timezone.utc).date().isoformat(), DAILY_BUDGET, 172800):
-                raise PhoneError("Today's free notification allowance has been reached. Try again tomorrow.", 429)
-            item = {"title": "FINN · Your phone test", "body": "Your FINN phone setup test. Your selected companies: " + ", ".join(record["symbols"]) + ". Tap to open Portfolio Review.",
-                    "company_url": alerts.DEFAULT_SITE_URL}
-            try:
-                self.sender(record["topic"], item)
-            except Exception as exc:
-                provider_status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
-                logging.getLogger(__name__).warning("Phone test delivery failed (%s, HTTP %s)", type(exc).__name__, provider_status)
-                raise PhoneError("The notification service could not accept the test. Wait a minute and try again.", 502) from exc
-            record["test_accepted_at"] = timestamp()
+            record.update(test_requested_at=timestamp(), test_state="queued", test_error=None)
             store.save(identity, record)
-            return {"accepted": True, "accepted_at": record["test_accepted_at"]}
+            return {"accepted": False, "queued": True}
+
+    def deliver_tests(self, *, dry_run=False):
+        """Run on the GitHub worker, which owns the publishing network path."""
+        store = self.require_store()
+        result = {"queued": 0, "sent": 0, "failed": 0}
+        with store.lock("test-dispatch", 600):
+            deadline = time.monotonic() + 150
+            for identity in store.all():
+                if time.monotonic() >= deadline:
+                    break
+                with store.lock(identity):
+                    record = store.get(identity)
+                    if record is None or record.get("test_state") != "queued":
+                        continue
+                    result["queued"] += 1
+                    if dry_run:
+                        continue
+                    today = datetime.now(timezone.utc).date().isoformat()
+                    if not store.allowance("delivery:" + today, DAILY_BUDGET, 172800):
+                        record["test_error"] = "Today's free notification allowance is full. Your test remains queued."
+                        store.save(identity, record)
+                        break
+                    item = {"title": "FINN · Your phone test",
+                            "body": "Your FINN phone setup test. Your selected companies: " + ", ".join(record["symbols"]) + ". Tap to open Portfolio Review.",
+                            "company_url": alerts.DEFAULT_SITE_URL}
+                    try:
+                        self.sender(record["topic"], item)
+                    except (httpx.HTTPError, OSError) as exc:
+                        provider_status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+                        logging.getLogger(__name__).warning("Phone test delivery failed (%s, HTTP %s)", type(exc).__name__, provider_status)
+                        record["test_error"] = "The free delivery service is busy. Your test remains queued for the next check."
+                        store.save(identity, record)
+                        result["failed"] += 1
+                        if provider_status == 429:
+                            break
+                        continue
+                    record.update(test_accepted_at=timestamp(), test_state="accepted", test_error=None)
+                    store.save(identity, record)
+                    result["sent"] += 1
+        return result
 
     def dispatch(self, refresh, portfolio, *, dry_run=True):
         store = self.require_store()

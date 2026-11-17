@@ -5,12 +5,14 @@ export type PhoneSubscription = {
   symbols: string[]; groups: string[]; active: boolean; topic: string;
   created_at: string; updated_at: string; enabled_at: string | null; test_accepted_at: string | null;
   last_delivery_at: string | null;
+  test_requested_at: string | null; test_state: "queued" | "accepted" | null; test_error: string | null;
   last_items: { symbol: string; title: string; body: string; published_at: string; filing_url: string | null; company_url: string }[];
 };
 export type PhoneCatalog = {
   available: boolean; companies: { symbol: string; name: string }[];
   groups: { id: string; label: string; description: string }[];
   cadence: string; max_daily: number;
+  test_cadence: string;
   last_check: { checked_at: string; holdings_checked: number; holdings_total: number; unchecked_symbols?: string[] } | null;
 };
 
@@ -43,7 +45,7 @@ export const phoneApi = {
   get: (token: string) => request<PhoneSubscription>("subscription", token),
   save: (token: string, symbols: string[], groups: string[], active: boolean) =>
     request<PhoneSubscription>("subscription", token, "PUT", { symbols, groups, active }),
-  test: (token: string) => request<{ accepted: boolean; accepted_at: string }>("test", token, "POST"),
+  test: (token: string) => request<{ accepted: boolean; queued: boolean }>("test", token, "POST"),
   delete: (token: string) => request<{ deleted: boolean }>("subscription", token, "DELETE"),
 };
 
