@@ -1,0 +1,92 @@
+{
+  "verified_at": "2026-11-17T00:40:20.600735+00:00",
+  "baseline_documents": 84,
+  "build_documents": 84,
+  "new_documents": 0,
+  "new_by_type_status": {},
+  "saved_jobs_identical": true,
+  "replay_views_compared": 108,
+  "replay_views_changed": [],
+  "replay_xbrl_source_dates_checked": 386,
+  "expected_growth_excluded_lists": 0,
+  "keyless_brief_quotes_exact": 43,
+  "keyless_brief_quotes_not_exact": 0,
+  "briefs": [
+    {
+      "symbol": "INFY",
+      "highlights": 5,
+      "latest_transcript_published": "2026-10-28"
+    },
+    {
+      "symbol": "HCLTECH",
+      "highlights": 5,
+      "latest_transcript_published": "2026-10-15"
+    },
+    {
+      "symbol": "RELIANCE",
+      "highlights": 2,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "HDFCBANK",
+      "highlights": 5,
+      "latest_transcript_published": "2026-10-23"
+    },
+    {
+      "symbol": "ICICIBANK",
+      "highlights": 2,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "BHARTIARTL",
+      "highlights": 1,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "LT",
+      "highlights": 1,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "MARUTI",
+      "highlights": 2,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "HINDUNILVR",
+      "highlights": 2,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "highlights": 5,
+      "latest_transcript_published": "2026-08-06"
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "highlights": 4,
+      "latest_transcript_published": "2026-10-27"
+    },
+    {
+      "symbol": "TITAN",
+      "highlights": 1,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "TRENT",
+      "highlights": 2,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "ASTRAL",
+      "highlights": 1,
+      "latest_transcript_published": ""
+    },
+    {
+      "symbol": "CERA",
+      "highlights": 5,
+      "latest_transcript_published": "2026-08-12"
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,164 @@
+{
+  "date_ist": "2026-11-17",
+  "result_scope": "Observed local working-tree candidate. No hosted changes or owner operations.",
+  "working_tree_base": "b13451d",
+  "commands": {
+    "tests": "cd backend && env FINN_MODEL_PROVIDER=keyless OPENAI_API_KEY= ANTHROPIC_API_KEY= GEMINI_API_KEY= GOOGLE_API_KEY= GROQ_API_KEY= OPENROUTER_API_KEY= ../.venv/bin/python -m pytest -q -p no:cacheprovider tests",
+    "live_build": "cd frontend && npm run build -- --outDir <scratch>/live",
+    "static_build": "cd frontend && VITE_STATIC=1 VITE_DIGEST_URL=/finn-enam/digest.json npm run build -- --base=/finn-enam/ --outDir <scratch>/www/finn-enam",
+    "seed": "scripts/build_seed.py prepare --from-dir data/seed_build_2026_11_04/pack; finn xbrl-refresh --quarters 8; scripts/build_seed.py verify; scripts/build_seed.py pack, all with scratch paths",
+    "digest": "env FINN_MODEL_PROVIDER=keyless FINN_DATA_DIR=<isolated store> PYTHONPATH=backend .venv/bin/python -m finn digest --days 7 --out <scratch>/digest.json --dry-run",
+    "digest_validate": "bash scripts/publish_digest.sh <scratch>/digest.json --validate",
+    "layout": "PYTHONPATH=<temporary Playwright install> .venv/bin/python backend/tests/ui_layout.py --static http://127.0.0.1:18085/finn-enam/ --live http://127.0.0.1:18084/ --chrome <installed Chrome> --out <scratch>/layout_report.json",
+    "ticker": "In a separate scratch seed: App.company('PIDILITIND'); App.submit_research(... mode='live'); App.run_job(job_id); App.refresh_financials(['PIDILITIND']); App.company('ZZZQX').",
+    "hygiene": "git status --short --branch; git ls-files filtered for prohibited artifacts; git diff --cached --name-only; git diff --check"
+  },
+  "work_package_checks": [
+    {
+      "package": "wp0",
+      "pytest": "233 passed, 1 warning in 6.22s",
+      "frontend_build": "passed"
+    },
+    {
+      "package": "wp1",
+      "pytest": "1 failed, 232 passed, 1 warning in 6.11s",
+      "frontend_build": "passed"
+    },
+    {
+      "package": "wp2",
+      "pytest": "1 failed, 233 passed, 1 warning in 5.62s",
+      "frontend_build": "passed"
+    },
+    {
+      "package": "wp3",
+      "pytest": "234 passed, 1 warning in 5.42s",
+      "frontend_build": "passed"
+    },
+    {
+      "package": "wp4",
+      "pytest": "235 passed, 1 warning in 5.64s",
+      "frontend_build": "passed"
+    },
+    {
+      "package": "wp5",
+      "pytest": "238 passed, 1 warning in 5.79s",
+      "frontend_build": "passed"
+    },
+    {
+      "package": "wp6",
+      "pytest": "238 passed, 1 warning in 5.70s",
+      "frontend_build": "passed"
+    },
+    {
+      "package": "wp7",
+      "pytest": "238 passed, 1 warning in 5.80s",
+      "frontend_build": "passed"
+    },
+    {
+      "package": "wp8",
+      "pytest": "238 passed, 1 warning in 5.74s",
+      "frontend_build": "passed"
+    }
+  ],
+  "note": "The first WP1 and WP2 runs found one old manifest compatibility regression. It was corrected and the full suite was rerun successfully before later checks.",
+  "candidate": {
+    "seed": {
+      "tarball": "/private/tmp/finn-final-seed/finn-seed.tar.gz",
+      "bytes": 433156870,
+      "mb": 433.2,
+      "counts": {
+        "companies": 15,
+        "document_versions": 84,
+        "passages": 27570,
+        "announcements": 2019,
+        "jobs": 19,
+        "xbrl_filings": 212,
+        "xbrl_facts": 34673
+      },
+      "source_files": 399,
+      "sha256": "9e92aa59611c2b818fa39c87e0c26a0903ecd75e7fbc0b36f3fd644136b4045f"
+    },
+    "database_sha256": "1757e58a6d844d94e52373d17460625340867f9e5adb8432bf8edbcedad0db6a",
+    "xbrl_refresh": {
+      "requested": 15,
+      "completed": 14,
+      "verified_filings": 212,
+      "model_calls": 0,
+      "model_cost_usd": 0
+    },
+    "digest": {
+      "generated_at": "2026-11-17T00:43:36.023427+00:00",
+      "checked": 15,
+      "items": 28
+    },
+    "snapshot_json_files": 215,
+    "pages_build": {
+      "path": "/private/tmp/finn-final-pages-release",
+      "base": "/finn-enam/",
+      "digest": "public live-data URL, pending publication",
+      "result": "built successfully"
+    }
+  },
+  "gates": {
+    "G0": {
+      "status": "not run",
+      "local": "233 baseline tests passed; final suite passed; no staged files or prohibited tracked artifact names",
+      "pending": "owner approval for clean, named commits",
+      "evidence": "gates.json"
+    },
+    "G1": {
+      "status": "not run",
+      "local": "Both HTTP servers returned matching candidate seed hash; all four feature endpoint checks returned 200",
+      "pending": "Pages and Render publication and three hosted cold starts",
+      "evidence": "parity.json"
+    },
+    "G2": {
+      "status": "fail",
+      "local": "Readability sample: credit rating 6, director change 11, regulatory 9 (required 10 each). Accuracy and negative-control gates not certified. Metadata-only fallback selected.",
+      "evidence": "extraction_spike.json"
+    },
+    "G3": {
+      "status": "not run",
+      "local": "15/15 checked, 28 subject cards; 12/15 fixture, 26 h last full check, missing feed fallback and revised metadata verified in Chromium",
+      "pending": "published feed visibility, runner probe and feed history. No cadence claimed.",
+      "evidence": "layout_report.json"
+    },
+    "G4": {
+      "status": "not run",
+      "local": "6/6 Chromium browser/width runs passed; first source link within 700px",
+      "pending": "approved commit and five physical phone T1 runs",
+      "evidence": "layout_report.json"
+    },
+    "G5": {
+      "status": "pass",
+      "local": "108 replay views, 386 XBRL timestamps and 43 exact keyless excerpts verified; three browser replay spot checks passed",
+      "pending": "repeat spot checks on actual deployed release",
+      "evidence": "replay_verification.json, layout_report.json"
+    },
+    "G6": {
+      "status": "not run",
+      "local": "PIDILITIND produced 5 keyless highlights and Sep 2026 consolidated XBRL; invalid ticker rejected; Pages-style snapshot miss is informational",
+      "pending": "repeat on Render and test actual cold path",
+      "evidence": "ticker.json, layout_report.json"
+    },
+    "G7": {
+      "status": "not run",
+      "pending": "iOS Safari and Android Chrome physical phones",
+      "evidence": "REHEARSAL.md"
+    },
+    "G8": {
+      "status": "not run",
+      "pending": "check original sent text and accept only claims with release evidence; no follow-up draft written",
+      "evidence": "REHEARSAL.md"
+    },
+    "G9": {
+      "status": "not run",
+      "pending": "only if owner chooses to enable and measure phone alerts",
+      "evidence": "REHEARSAL.md"
+    }
+  },
+  "T1": {
+    "status": "not run",
+    "note": "Chromium first-link-visible times are local rehearsal metrics, not taps-to-source or a physical-phone T1 result."
+  }
+}

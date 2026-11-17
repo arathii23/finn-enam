@@ -15,7 +15,7 @@ from finn.replay import classify_versions, load_manifest
 from finn.research import build_packet, run_research, validate_claims
 from finn.service import App, NotFound
 from finn.sources import nse
-from finn.sources.fetch import UnsafeURL, validate_bytes, validate_public_https
+from finn.sources.fetch import Fetcher, UnsafeURL, validate_bytes, validate_public_https
 from finn.verify import run_checks
 
 from conftest import AR_LATE_URL, AR_URL, BASE, TR_URL, UNPROVEN_URL, bhav
@@ -65,6 +65,57 @@ def test_html_served_as_pdf_is_invalid_document(env):
     assert res.state == "invalid_document" and res.content is None
 
 
+def test_nse_redirect_to_in_mirror_is_accepted(env, monkeypatch):
+    _, store, _, _ = env
+    monkeypatch.setenv("NSE_HOST_FAMILIES", "com,in")
+    calls = []
+    def handler(request):
+        calls.append(str(request.url))
+        if request.url.host == "www.nseindia.com":
+            return httpx.Response(301, headers={"location": "https://www.nseindia.in/api/test"})
+        return httpx.Response(200, json={"data": []})
+    fetcher = Fetcher(store, client=httpx.Client(transport=httpx.MockTransport(handler)), min_interval_s=0)
+    result = fetcher.get("https://www.nseindia.com/api/test", source_kind="nse_announcements", expect="json")
+    assert result.ok and result.final_url == "https://www.nseindia.in/api/test"
+    assert calls == ["https://www.nseindia.com/api/test", "https://www.nseindia.in/api/test"]
+
+
+def test_nse_redirect_to_foreign_host_is_rejected_and_logged(env, monkeypatch):
+    _, store, _, _ = env
+    monkeypatch.setenv("NSE_HOST_FAMILIES", "com,in")
+    calls = []
+    def handler(request):
+        calls.append(str(request.url))
+        return httpx.Response(302, headers={"location": "https://example.org/collect"})
+    fetcher = Fetcher(store, client=httpx.Client(transport=httpx.MockTransport(handler)), min_interval_s=0)
+    result = fetcher.get("https://www.nseindia.com/api/test", source_kind="nse_announcements", expect="json")
+    assert not result.ok and "outside the NSE host allowlist" in (result.error or "")
+    assert calls == ["https://www.nseindia.com/api/test", "https://www.nseindia.in/api/test"]
+    attempts = store.query("SELECT state, error FROM fetch_attempts ORDER BY started_at, attempt_id")
+    assert len(attempts) == 2 and all(row["state"] == "error" for row in attempts)
+    assert all("allowlist" in (row["error"] or "") for row in attempts)
+
+
+def test_nse_homepage_403_does_not_abort_a_working_api_request(env, monkeypatch):
+    _, store, base_fetcher, _ = env
+    monkeypatch.setenv("NSE_HOST_FAMILIES", "com,in")
+    assert nse.refresh_security_master(store, base_fetcher)[0]
+    company = nse.resolve_company(store, "TESTCO")
+    calls = []
+    def handler(request):
+        calls.append(str(request.url))
+        if request.url.path == "/":
+            return httpx.Response(403)
+        if request.url.path == "/api/corporate-announcements":
+            return httpx.Response(200, json=[])
+        return httpx.Response(404)
+    fetcher = Fetcher(store, client=httpx.Client(transport=httpx.MockTransport(handler)), min_interval_s=0)
+    response, records = nse.fetch_announcements(fetcher, company, date(2026, 11, 1), date(2026, 11, 2))
+    assert response.ok and records == []
+    assert any("/api/corporate-announcements" in url for url in calls)
+    assert all("example.org" not in url for url in calls)
+
+
 # ------------------------------------------------------------------ ingestion + provenance
 def test_ingest_preserves_provenance(env):
     settings, store, cfg, report = _ingest(env)
@@ -92,7 +143,8 @@ def test_ingest_preserves_provenance(env):
     eod = store.query("SELECT trading_date, close, volume FROM market_observations WHERE symbol='TESTCO' ORDER BY trading_date")
     assert [(r["trading_date"], r["close"], r["volume"]) for r in eod] == [("2025-04-17", 103.5, 123456), ("2025-04-22", 104.0, 123456)]
     nf = store.query("SELECT COUNT(*) AS n FROM fetch_attempts WHERE source_kind='nse_eod' AND state='not_found'")[0]["n"]
-    assert nf == 4
+    # Two mirror families are tried for the four missing sessions.
+    assert nf == 8
 
 
 def test_speaker_and_page_locators(env):

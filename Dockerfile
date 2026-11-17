@@ -24,6 +24,7 @@ COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend/ backend/
 COPY manifests/ manifests/
+COPY docs/evaluation/ docs/evaluation/
 COPY --from=web /web/dist frontend/dist
 # Verified primary-source corpus (public NSE data), baked into the image.
 RUN mkdir -p /app/data && curl -fsSL "$SEED_URL" -o /tmp/seed.tar.gz \

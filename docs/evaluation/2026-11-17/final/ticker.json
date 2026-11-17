@@ -1,0 +1,18 @@
+{
+  "identity": {
+    "symbol": "PIDILITIND",
+    "seconds": 0.0
+  },
+  "research": {
+    "state": "partial",
+    "highlights": 5,
+    "seconds": 25.61
+  },
+  "xbrl": {
+    "seconds": 8.46,
+    "available": true,
+    "period": "2026-09-30",
+    "basis": "consolidated"
+  },
+  "invalid_ticker_rejected": true
+}

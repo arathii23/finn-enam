@@ -158,6 +158,46 @@ CREATE TABLE IF NOT EXISTS derived_cache (
   result TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS xbrl_filings (
+  filing_id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  basis TEXT NOT NULL,
+  period_end TEXT NOT NULL,
+  filing_type TEXT NOT NULL,
+  revision TEXT,
+  seq_id TEXT,
+  published_at TEXT,
+  published_at_raw TEXT,
+  feed_url TEXT NOT NULL,
+  feed_hash TEXT,
+  raw_record TEXT NOT NULL,
+  xbrl_url TEXT NOT NULL,
+  xbrl_final_url TEXT,
+  xbrl_hash TEXT NOT NULL,
+  pdf_url TEXT,
+  retrieved_at TEXT NOT NULL,
+  facts_count INTEGER NOT NULL,
+  parse_state TEXT NOT NULL,
+  issue TEXT
+);
+CREATE INDEX IF NOT EXISTS xbrl_filings_company_period ON xbrl_filings(company_id, basis, period_end DESC, published_at DESC);
+CREATE TABLE IF NOT EXISTS xbrl_facts (
+  fact_id TEXT PRIMARY KEY,
+  filing_id TEXT NOT NULL,
+  context_ref TEXT NOT NULL,
+  period_start TEXT,
+  period_end TEXT,
+  period_kind TEXT NOT NULL,
+  concept TEXT NOT NULL,
+  namespace TEXT,
+  value_text TEXT NOT NULL,
+  unit TEXT,
+  decimals TEXT,
+  dimensions_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS xbrl_facts_filing_period ON xbrl_facts(filing_id, period_end, period_start);
+CREATE INDEX IF NOT EXISTS xbrl_facts_concept ON xbrl_facts(concept, period_end);
 """
 
 

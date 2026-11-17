@@ -2,6 +2,8 @@ import type { ResearchMode } from "./api";
 
 type ResearchLink = { symbol?: string; question?: string | null; eventId?: string | null; mode?: ResearchMode };
 
+export const savedBriefsUrl = "https://arathii23.github.io/finn-enam/#/research";
+
 export function researchPath({ symbol, question, eventId, mode = "replay" }: ResearchLink = {}): string {
   const params = new URLSearchParams({ mode });
   if (question?.trim()) params.set("question", question.trim().slice(0, 300));

@@ -1,0 +1,245 @@
+{
+  "observed_local_date": "2026-11-17",
+  "source": "NSE announcements for the 15 FINN holdings, 2026-10-19 through 2026-11-17 IST",
+  "method": "Bounded current portfolio refresh for 30 days. Classified recent notices using finn.prioritize.classify, deduplicated by exact NSE PDF URL, retrieved up to 12 per category with a 2 MB limit and read up to 8 pages using pypdf.",
+  "results": {
+    "credit_rating": {
+      "minimum": 10,
+      "downloaded": 6,
+      "readable": 6,
+      "filings": [
+        {
+          "symbol": "TRENT",
+          "published_at": "2026-11-16T11:32:41+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/TRENT_16112026170133_BSENSECARERATING161120260signed.pdf",
+          "sha256": "a9db1cd66059b0435e8c55b2b6adb599126de42e3b6c1e8327ab0ed7f126cc22",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "RELIANCE",
+          "published_at": "2026-11-04T15:17:15+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/PVIVINMA_04112026204646_SE_RIL_041126.pdf",
+          "sha256": "30a7db41a2287177f20ee090bc1a1a476fd37b67f4df684285f3a1b3ca60624f",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "ICICIBANK",
+          "published_at": "2026-10-24T08:16:14+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/ICICI2022_24102026134600_NSEBSE24102026.pdf",
+          "sha256": "6b5a9a0244f5b5c7a9a6e68f96fc93dc09a2cf52682c33bd175c084052ff2b07",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "ICICIBANK",
+          "published_at": "2026-10-24T08:16:14+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/ICICI2022_24102026134600_NSEBSE24102026.pdf",
+          "sha256": "6b5a9a0244f5b5c7a9a6e68f96fc93dc09a2cf52682c33bd175c084052ff2b07",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "RELIANCE",
+          "published_at": "2026-10-21T15:13:31+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/PVIVINMA_21102026204310_SE_ICRA.pdf",
+          "sha256": "0fb275e5f032478828b88a6aa911d3d6034b10c53a4c20200b0dc07f0a4956c9",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "RELIANCE",
+          "published_at": "2026-10-21T15:13:31+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/PVIVINMA_21102026204310_SE_ICRA.pdf",
+          "sha256": "0fb275e5f032478828b88a6aa911d3d6034b10c53a4c20200b0dc07f0a4956c9",
+          "state": "fetched",
+          "readable_text": true
+        }
+      ]
+    },
+    "management_change": {
+      "minimum": 10,
+      "downloaded": 12,
+      "readable": 11,
+      "filings": [
+        {
+          "symbol": "HDFCBANK",
+          "published_at": "2026-11-13T11:05:23+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_13112026163422_SE_Intimation-_VSR.pdf",
+          "sha256": "668267b58b2e77634c955d18b5163c658b1ff84cc41eac8c1c1598dbaf9c5b94",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "HDFCBANK",
+          "published_at": "2026-11-12T12:03:26+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_12112026173223_SE_Intimation-_VSR.pdf",
+          "sha256": "e31f1dbb9fe54fc89b193406be873af2f368623ed2f21c35e844fbcdd1300519",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "HDFCBANK",
+          "published_at": "2026-11-06T09:51:57+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_06112026152141_SE_Intimation-Srivatsan.pdf",
+          "sha256": "faa833976422636f5a63ce6767435cdc32177b643770cad41367838c634f3868",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "TITAN",
+          "published_at": "2026-11-05T13:21:56+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/TITAN_05112026185140_SENNTata.pdf",
+          "sha256": "efe829bab16afcb12339620052ce34be5859d93df5d91a22a448aafbf27de2c1",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "ASTRAL",
+          "published_at": "2026-11-05T11:23:40+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/ASTRAL_05112026165329_Reg30.pdf",
+          "sha256": null,
+          "state": "invalid_document",
+          "readable_text": false
+        },
+        {
+          "symbol": "CERA",
+          "published_at": "2026-11-04T07:06:32+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/CERA_04112026123603_CERAREG3004112026s.pdf",
+          "sha256": "db716c56921618b1fc2042f2e6b2a29addedf72e0335666072c91adfd785a2c4",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "CERA",
+          "published_at": "2026-11-04T07:06:32+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/CERA_04112026123603_CERAREG3004112026s.pdf",
+          "sha256": "db716c56921618b1fc2042f2e6b2a29addedf72e0335666072c91adfd785a2c4",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "HDFCBANK",
+          "published_at": "2026-10-31T16:46:45+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/HDFCBANK3_31102026221631_SE_INTIMATION-_Sanjay_Dsouza.pdf",
+          "sha256": "a6f4508d1b4b159c3612f8f30f86b23984978dc7749290e87a44f1e9a6ca0956",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "HDFCBANK",
+          "published_at": "2026-10-31T16:46:45+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_31102026221631_SE_INTIMATION-_Sanjay_Dsouza.pdf",
+          "sha256": "a6f4508d1b4b159c3612f8f30f86b23984978dc7749290e87a44f1e9a6ca0956",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "TRENT",
+          "published_at": "2026-10-29T11:02:14+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/TRENT_29102026163102_AppointmentofDirector.pdf",
+          "sha256": "fe9147bbfeb5c7c1ac01a6a6b32a072d580323de933a0b7ef0b25207690fb7c3",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "TRENT",
+          "published_at": "2026-10-29T11:02:14+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/TRENT_29102026163044_AppointmentofDirector.pdf",
+          "sha256": "fe9147bbfeb5c7c1ac01a6a6b32a072d580323de933a0b7ef0b25207690fb7c3",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "TRENT",
+          "published_at": "2026-10-29T11:02:14+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/TRENT_29102026163140_AppointmentofDirector.pdf",
+          "sha256": "fe9147bbfeb5c7c1ac01a6a6b32a072d580323de933a0b7ef0b25207690fb7c3",
+          "state": "fetched",
+          "readable_text": true
+        }
+      ]
+    },
+    "litigation": {
+      "minimum": 10,
+      "downloaded": 9,
+      "readable": 9,
+      "filings": [
+        {
+          "symbol": "BHARTIARTL",
+          "published_at": "2026-11-16T13:37:17+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_16112026190520_BhartiAirtelSTXdisclosure.pdf",
+          "sha256": "9e8189151a9a782ada9c6e1c9a92d2df4abeed51c5d74b5131b25e028afa0d21",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "BHARTIARTL",
+          "published_at": "2026-11-06T09:20:34+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_06112026144741_BhartiAirtelReg30disclosure.pdf",
+          "sha256": "58a890a0ece9ef9a275ac1cf8021b3f3e7934a5371d75f33c72dd3e8523a1a61",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "BHARTIARTL",
+          "published_at": "2026-11-04T11:17:51+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_04112026164737_BhartiAirtelSTXdisclosure.pdf",
+          "sha256": "9f890406e4b21e232c36586984844e05e88bbaa4fe53ea71f0815f53cab0e6f1",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "ASTRAL",
+          "published_at": "2026-11-03T12:22:21+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/ASTRAL_03112026175002_SELFILE.pdf",
+          "sha256": "fb651e95bdcb9bc0b6bf6d332ea97d2446715e2d021ef287a637b9841b0c586c",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "ASTRAL",
+          "published_at": "2026-11-03T12:22:21+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/ASTRAL_03112026175002_SELFILE.pdf",
+          "sha256": "fb651e95bdcb9bc0b6bf6d332ea97d2446715e2d021ef287a637b9841b0c586c",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "BHARTIARTL",
+          "published_at": "2026-10-30T17:10:26+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/BHARTIARTL_30102026223927_BhartiAirtelSTXdisclosure.pdf",
+          "sha256": "6a275d8720cf26fcfa0ad9ec60bb336e782fa8d177bac3fb4b0f7353856873ec",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "BHARTIARTL",
+          "published_at": "2026-10-30T17:10:26+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_30102026223927_BhartiAirtelSTXdisclosure.pdf",
+          "sha256": "6a275d8720cf26fcfa0ad9ec60bb336e782fa8d177bac3fb4b0f7353856873ec",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "BHARTIARTL",
+          "published_at": "2026-10-29T08:12:23+00:00",
+          "attachment_url": "https://nsearchives.nseindia.com/corporate/BHARTIARTL_29102026134154_BhartiAirtelSTXIntimation.pdf",
+          "sha256": "eb7f7c277e52abe5f4a48de08bea7cd04b12c290f13660e8e45504423227c376",
+          "state": "fetched",
+          "readable_text": true
+        },
+        {
+          "symbol": "BHARTIARTL",
+          "published_at": "2026-10-29T08:12:23+00:00",
+          "attachment_url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_29102026134154_BhartiAirtelSTXIntimation.pdf",
+          "sha256": "eb7f7c277e52abe5f4a48de08bea7cd04b12c290f13660e8e45504423227c376",
+          "state": "fetched",
+          "readable_text": true
+        }
+      ]
+    }
+  },
+  "decision": "fail: sample floor missed for two categories; no precision or negative-control claim. Ship metadata-only fallback with unchanged category tiers."
+}

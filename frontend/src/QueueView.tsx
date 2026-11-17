@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, IS_STATIC, type LivePrices, type PortfolioQueue, type QueueCompany, type QueueEvent, type ResearchMode, type PortfolioRefresh } from "./api";
+import { api, ApiError, IS_STATIC, type LivePrices, type PortfolioQueue, type QueueCompany, type QueueEvent, type ResearchMode } from "./api";
 import { shortDate, istDateTime } from "./format";
 import { Chip, Section, StateBox } from "./ui";
 import { liveAppUrl } from "./links";
+import { FreshnessLine } from "./FreshnessLine";
 
 const REVIEWED_KEY = "finn.reviewed.v1";
 const PREFS_KEY = "finn.review.preferences.v2";
@@ -54,7 +55,6 @@ export function QueueView({ mode = "replay", onMode, onOpenCompany, onResearchEv
   const [reviewed, setReviewed] = useState<Record<string, string>>(() => stored(REVIEWED_KEY, {}));
   const [showReviewed, setShowReviewed] = useState(false);
   const [checkingSources, setCheckingSources] = useState(false);
-  const [sourceReport, setSourceReport] = useState<PortfolioRefresh | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const request = useRef(0);
   const restored = useRef(false);
@@ -67,7 +67,7 @@ export function QueueView({ mode = "replay", onMode, onOpenCompany, onResearchEv
     setError(null); setRefreshing(true);
     api.portfolio({ mode, priceMovePct: Number(p.price), volumeMultiple: Number(p.vol), window: p.period,
       filingFrom: p.period === "custom" ? p.from : undefined, filingTo: p.period === "custom" ? p.to : undefined })
-      .then((result) => { if (id === request.current) { setData(result); if (mode === "live" && result.refresh) setSourceReport(result.refresh); } })
+      .then((result) => { if (id === request.current) setData(result) })
       .catch((e) => { if (id === request.current) setError(e); })
       .finally(() => { if (id === request.current) setRefreshing(false); });
   }, [mode]);
@@ -107,7 +107,7 @@ export function QueueView({ mode = "replay", onMode, onOpenCompany, onResearchEv
   const noData = data?.companies.filter((c) => c.status !== "ok") ?? [];
   const checkSources = async () => {
     setCheckingSources(true); setSourceError(null);
-    try { const result = await api.refreshPortfolio(); setSourceReport(result); load(prefs); }
+    try { await api.refreshPortfolio(); load(prefs); }
     catch (e) { setSourceError(e instanceof Error ? e.message : "The exchange check could not complete."); }
     finally { setCheckingSources(false); }
   };
@@ -123,11 +123,15 @@ export function QueueView({ mode = "replay", onMode, onOpenCompany, onResearchEv
       <div className="card-head"><h1>What needs your attention</h1><Chip tone="muted">{data.summary.companies} holdings</Chip></div>
       <p className="muted">{leadCount} leading filings · {data.summary.price_volume_flagged} EOD flags · {eventCount} filings stored in this period</p>
       {!IS_STATIC && <div className="attention-options" role="group" aria-label="Review source period"><button className={`btn btn-small${mode === "replay" ? " selected" : ""}`} aria-pressed={mode === "replay"} onClick={() => onMode?.("replay")}>Historical demo</button><button className={`btn btn-small${mode === "live" ? " selected" : ""}`} aria-pressed={mode === "live"} onClick={() => onMode?.("live")}>Current filings</button></div>}
-      {IS_STATIC && <a className="btn btn-small" href={liveAppUrl().replace(/#.*$/, "#/?mode=live")}>Check current filings in live app ↗</a>}
-      {mode === "live" && <div className="source-freshness"><p className="fine">Check the last seven days of primary exchange notices for these 15 holdings. Opening Review reads stored data; a fresh check starts only when you select the button.</p><button className="btn btn-small btn-primary" disabled={checkingSources} onClick={checkSources}>{checkingSources ? "Checking exchange notices…" : "Check latest filings"}</button><p className="fine">A bounded check can take up to a minute. Exchange access may be unavailable; an unsuccessful check is not an all-clear.</p>
-        {sourceError && <p className="composer-error" role="alert">{sourceError} Earlier stored filings remain available.</p>}
-        {sourceReport && <div role="status"><p className="fine">Last check: {sourceReport.checked}/{sourceReport.companies.length} holdings checked · {istDateTime(sourceReport.finished_at)}{sourceReport.cached ? " (recent check reused)" : ""}</p>{sourceReport.companies.some((company) => company.error) && <details><summary>Source check gaps</summary><ul className="gaps">{sourceReport.companies.filter((company) => company.error).map((company) => <li key={company.symbol}>{company.symbol}: {company.error}</li>)}</ul></details>}</div>}
-      </div>}
+      <FreshnessLine
+        replay={mode === "replay" ? data.replay?.cutoff_display ?? "the replay cutoff" : undefined}
+        checks={mode === "live" ? { finished_at: data.refresh?.finished_at ?? null, last_full_check_at: data.summary.last_full_check_at,
+          holdings: data.companies.map((company) => ({symbol: company.symbol, state: company.freshness?.state ?? "not_checked",
+            checked_at: company.freshness?.last_checked, error: company.freshness?.error })) } : undefined}
+        action={IS_STATIC ? <a className="btn btn-small" href={liveAppUrl().replace(/#.*$/, "#/?mode=live")}>Open live app ↗ (may take about a minute to wake)</a> :
+          mode === "live" ? <button className="btn btn-small" disabled={checkingSources} onClick={checkSources}>{checkingSources ? "Checking exchange notices…" : "Check latest filings"}</button> : null}
+      />
+      {sourceError && <StateBox kind="partial" title="Latest check did not complete">{sourceError} Earlier stored filings remain available.</StateBox>}
       <div className="period-options" aria-label="Review period">
         {(([["24h", "24 hours"], ["7d", "7 days"], ["all", "Full replay"], ["custom", "Choose dates"]] as const)
           .filter(([value]) => value !== "custom" || (!IS_STATIC && mode === "replay"))).map(([value, label]) =>
@@ -173,9 +177,7 @@ export function QueueView({ mode = "replay", onMode, onOpenCompany, onResearchEv
       {showReviewed ? done.map((c) => <CompanyCard key={c.symbol} c={c} mode={mode} reviewed onToggle={() => toggleReviewed(original(c))} onOpenCompany={openCompany} onResearchEvent={research} />) : <p className="muted">{done.map((c) => c.symbol).join(", ")}</p>}
     </Section>}
     {(!IS_STATIC || import.meta.env.VITE_LIVE_PRICES_URL) && <LivePricesCard onOpenCompany={openCompany} priceMovePct={data.thresholds.price_move_pct} volumeMultiple={data.thresholds.volume_multiple} />}
-    <p className="fine review-coverage">{data.summary.checked}/{data.summary.companies} {mode === "live" ? "holdings verified within the last 15 minutes" : "holdings have stored data"}. Metadata coverage does not mean every attachment has been read.</p>
-    {mode === "live" && <Section title="Exchange check coverage"><p className="fine">A quiet company is only as useful as its source check. Failed or missing checks remain visible here.</p><details><summary>Inspect all {data.companies.length} holdings</summary><ul className="gaps">{data.companies.map((company) => <li key={company.symbol}><strong>{company.symbol}</strong> · {company.freshness?.note || "No current-source check recorded."}{company.freshness?.last_checked && <span className="sub">Checked {istDateTime(company.freshness.last_checked)}</span>}</li>)}</ul></details></Section>}
-    {noData.length > 0 && <Section title="Source coverage gaps"><p className="fine">No stored activity for these holdings. Open a company to inspect its source inventory.</p><div className="prepared">{noData.map((c) => <button className="btn btn-small" key={c.symbol} onClick={() => openCompany(c.symbol)}>{c.symbol}</button>)}</div></Section>}
+    {mode === "replay" && noData.length > 0 && <Section title="Source coverage gaps"><p className="fine">No stored activity for these holdings. Open a company to inspect its source inventory.</p><div className="prepared">{noData.map((c) => <button className="btn btn-small" key={c.symbol} onClick={() => openCompany(c.symbol)}>{c.symbol}</button>)}</div></Section>}
   </div>;
 }
 
@@ -189,7 +191,7 @@ function relativeTime(iso: string): string {
   return hrs < 24 ? `${hrs} h ago` : `${Math.round(hrs / 24)} d ago`;
 }
 
-function LivePricesCard({ onOpenCompany, priceMovePct, volumeMultiple }: { onOpenCompany: (symbol: string) => void; priceMovePct: number; volumeMultiple: number }) {
+export function LivePricesCard({ onOpenCompany, priceMovePct, volumeMultiple }: { onOpenCompany: (symbol: string) => void; priceMovePct: number; volumeMultiple: number }) {
   const auto = IS_STATIC; // static build reads an auto-refreshed feed; open and poll it
   const [open, setOpen] = useState(auto);
   const [data, setData] = useState<LivePrices | null>(null);
@@ -278,6 +280,15 @@ function EventRow({ e, symbol, mode, onResearchEvent }: { e: QueueEvent; symbol:
   return <div className="event queue-event">
     <div className="event-top"><span className={`priority-label priority-${e.tier}`}>{e.tier === 1 ? "Leading" : e.tier === 2 ? "Notable" : "Routine"} · {CATEGORIES[e.ref_category] || e.reason}</span><time dateTime={e.published_at || undefined}>{eventTime(e.published_at)}</time></div>
     <p className="queue-headline">{text.length > 220 ? text.slice(0, 220) + "…" : text}</p>
+    {e.results_scorecard && <details className="research-disclosure queue-scorecard">
+      <summary>Structured results · quarter ended {e.results_scorecard.period_end} · {e.results_scorecard.basis}</summary>
+      <ul className="coverage">{e.results_scorecard.metrics.map((metric) => <li key={metric.key}>
+        <span>{metric.label}</span><span>₹{Number(metric.current.value_crore).toLocaleString("en-IN", { maximumFractionDigits: 1 })} crore · QoQ {metric.qoq_pct == null ? "—" : `${metric.qoq_pct > 0 ? "+" : ""}${metric.qoq_pct.toFixed(1)}%`} · YoY {metric.yoy_pct == null ? "—" : `${metric.yoy_pct > 0 ? "+" : ""}${metric.yoy_pct.toFixed(1)}%`}</span>
+      </li>)}</ul>
+      <div className="financial-links"><a className="btn btn-small btn-ghost" href={e.results_scorecard.xbrl_url ?? "#"} target="_blank" rel="noopener noreferrer">Open XBRL</a>
+        {e.results_scorecard.pdf_url && <a className="btn btn-small btn-ghost" href={e.results_scorecard.pdf_url} target="_blank" rel="noopener noreferrer">Open results PDF</a>}</div>
+      <p className="fine">Exchange-tagged figures, shown in rupees crore. Changes are arithmetic against the immediately previous and year-ago quarter. No price move is attributed to this filing.</p>
+    </details>}
     {e.subject && <details className="original-description"><summary>Exchange description</summary><p>{e.subject}</p></details>}
     <div className="event-actions">
       {e.attachment_version_id ? <><a className="btn btn-small btn-ghost" href={api.fileUrl(e.attachment_version_id)} target="_blank" rel="noopener">Read filing</a>{IS_STATIC ? <a className="btn btn-small btn-ghost" href={liveAppUrl({ symbol, eventId: e.announcement_id, question: "What does this filing state, and what did management say around it?", mode })}>Research event in live app ↗</a> : <button className="btn btn-small btn-ghost" onClick={() => onResearchEvent(symbol, e.announcement_id)}>Research event</button>}</> : <><span className="fine">Metadata only</span>{e.attachment_url && /^https:\/\//i.test(e.attachment_url) && <a className="btn btn-small btn-ghost" href={e.attachment_url} target="_blank" rel="noopener noreferrer">Exchange attachment</a>}{mode === "live" && !IS_STATIC && <button className="btn btn-small btn-ghost" onClick={() => onResearchEvent(symbol, e.announcement_id)}>Read & research filing</button>}</>}

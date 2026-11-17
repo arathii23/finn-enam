@@ -12,6 +12,8 @@ HTML and print to PDF for a one-page phone-sharing handout).
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from pathlib import Path
 
@@ -47,10 +49,19 @@ CARD = """<!doctype html>
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Make a QR code + share card for a FINN URL.")
-    p.add_argument("url", help="the deployed HTTPS URL, e.g. https://finn-demo.pages.dev")
+    p.add_argument("url", nargs="?", help="the deployed HTTPS URL, e.g. https://finn-demo.pages.dev")
+    p.add_argument("--public-alert-topic", help="the approved public ntfy topic, never the private test topic")
     p.add_argument("--out", default="docs/share", help="output directory (default: docs/share)")
     args = p.parse_args(argv)
-    if not args.url.lower().startswith(("http://", "https://")):
+    if args.public_alert_topic:
+        if args.url or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", args.public_alert_topic):
+            p.error("Supply one valid public ntfy topic")
+        out = Path(args.out)
+        out.mkdir(parents=True, exist_ok=True)
+        segno.make(f"https://ntfy.sh/{args.public_alert_topic}", error="m").save(out / "alerts-qr.png", scale=6, border=4)
+        (out / "alerts-subscription.json").write_text(json.dumps({"topic": args.public_alert_topic}) + "\n")
+        return 0
+    if not args.url or not args.url.lower().startswith(("http://", "https://")):
         print("URL must start with http:// or https://", file=sys.stderr)
         return 2
     out = Path(args.out)

@@ -20,7 +20,10 @@ from .sources import documents, nse
 from .sources.fetch import Fetcher
 
 DISCOVERY_VERSION = "nse-discovery-v2-bundled-transcripts"
-EXCHANGE_HOSTS = {"nsearchives.nseindia.com", "archives.nseindia.com", "www.nseindia.com", "nseindia.com"}
+EXCHANGE_HOSTS = {
+    "nsearchives.nseindia.com", "archives.nseindia.com", "www.nseindia.com", "nseindia.com",
+    "nsearchives.nseindia.in", "archives.nseindia.in", "www.nseindia.in", "nseindia.in",
+}
 _UNSUPPORTED_EXTENSIONS = (".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".doc", ".docx",
                            ".xls", ".xlsx", ".ppt", ".pptx", ".html", ".htm")
 

@@ -48,10 +48,10 @@ from finn.replay import load_manifest  # noqa: E402
 from finn.research import run_research  # noqa: E402
 from finn.service import App  # noqa: E402
 from finn.sources import nse  # noqa: E402
+from finn.sources import xbrl  # noqa: E402
 from finn.sources.fetch import Fetcher  # noqa: E402
 
 PRODUCTION_DB = REPO / "data" / "finn.sqlite3"
-PRODUCTION_SOURCES = REPO / "data" / "sources"
 QUESTION = "What guidance did management give for revenue growth and margins, and what conditions came with it?"
 
 
@@ -84,20 +84,25 @@ def build_settings(out: Path):
 # --------------------------------------------------------------------------- prepare
 def cmd_prepare(args) -> int:
     out = Path(args.out)
+    source = Path(args.from_dir).resolve() if args.from_dir else PRODUCTION_DB.parent
+    if not (source / "finn.sqlite3").is_file() or not (source / "sources").is_dir():
+        print("Seed input needs finn.sqlite3 and its matching sources directory.", file=sys.stderr)
+        return 2
     if out.exists():
         print(f"refusing to overwrite existing {out}", file=sys.stderr)
         return 2
     out.mkdir(parents=True)
-    backup_db(PRODUCTION_DB, out / "baseline.sqlite3")      # frozen reference for verify
-    backup_db(PRODUCTION_DB, out / "finn.sqlite3")          # the copy discovery will write into
+    backup_db(source / "finn.sqlite3", out / "baseline.sqlite3")
+    shutil.copyfile(out / "baseline.sqlite3", out / "finn.sqlite3")
     # Clone-on-write copy on APFS (instant, no extra disk); plain copy elsewhere.
-    cloned = subprocess.run(["cp", "-cR", str(PRODUCTION_SOURCES), str(out / "sources")], capture_output=True)
+    cloned = subprocess.run(["cp", "-cR", str(source / "sources"), str(out / "sources")], capture_output=True)
     if cloned.returncode != 0:
-        shutil.copytree(PRODUCTION_SOURCES, out / "sources")
+        shutil.copytree(source / "sources", out / "sources")
     meta = {"prepared_at": datetime.now(timezone.utc).isoformat(),
             "baseline_sha256": sha256_file(out / "baseline.sqlite3"),
             "git_commit": subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True,
-                                         text=True).stdout.strip()}
+                                         text=True).stdout.strip(),
+            "working_tree": bool(subprocess.check_output(["git", "-C", str(REPO), "status", "--porcelain"], text=True).strip())}
     (out / "build_meta.json").write_text(json.dumps(meta, indent=2))
     print(json.dumps(meta, indent=2))
     return 0
@@ -120,6 +125,10 @@ def cmd_discover(args) -> int:
             try:
                 company = nse.resolve_company(store, symbol, fetcher)
                 report = discover_company_sources(store, fetcher, s, company, cutoff, refresh=True)
+                xbrl_report = xbrl.refresh_company(store, fetcher, company, quarters=8)
+                report["integrated_xbrl"] = xbrl_report
+                report["wall_seconds"] = round(time.monotonic() - t0, 1)
+                (reports / f"xbrl_{symbol}.json").write_text(json.dumps(xbrl_report, indent=2, default=str))
             except Exception as exc:  # noqa: BLE001 - a failed company is reported, never hidden
                 report = {"symbol": symbol, "state": "error", "issues": [f"{exc.__class__.__name__}: {exc}"]}
             report["wall_seconds"] = round(time.monotonic() - t0, 1)
@@ -166,7 +175,11 @@ def replay_views(settings, symbols: List[str]) -> Dict[str, str]:
     app = App(settings, start_worker=False)
     views: Dict[str, str] = {}
     for window in ("24h", "7d", "all"):
-        views[f"portfolio_{window}"] = canon(app.portfolio_queue(mode="replay", window=window))
+        queue = app.portfolio_queue(mode="replay", window=window)
+        for company in queue["companies"]:
+            for event in (*company.get("leading_events", []), *company.get("notable_events", [])):
+                event.pop("results_scorecard", None)
+        views[f"portfolio_{window}"] = canon(queue)
     for sym in symbols:
         ov = app.company_overview(sym, "replay")
         views[f"{sym}:announcements"] = canon(ov["announcements"])
@@ -226,6 +239,24 @@ def cmd_verify(args) -> int:
         status[key] = status.get(key, 0) + 1
     store = Store(s.db_path, s.files_dir)
     cfg = load_manifest(s.manifest_path)
+    def verified_dates(value):
+        if isinstance(value, dict):
+            if value.get("xbrl_hash") and value.get("published_at"):
+                yield value["published_at"]
+            for child in value.values():
+                yield from verified_dates(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from verified_dates(child)
+
+    replay_xbrl_dates_checked = 0
+    for sym in symbols:
+        company = nse.resolve_company(store, sym)
+        for basis in ("consolidated", "standalone"):
+            for published in verified_dates(xbrl.build_financial_cards(store, company, basis=basis, cutoff_utc=cfg.cutoff_utc)):
+                replay_xbrl_dates_checked += 1
+                if datetime.fromisoformat(published) > datetime.fromisoformat(cfg.cutoff_utc):
+                    problems.append(f"{sym}: XBRL evidence published after replay cutoff: {published}")
     quotes_ok = quotes_bad = 0
     brief_rows = []
     for sym in symbols:
@@ -249,6 +280,7 @@ def cmd_verify(args) -> int:
               "baseline_documents": len(base), "build_documents": len(built), "new_documents": len(new),
               "new_by_type_status": status, "saved_jobs_identical": jobs_same,
               "replay_views_compared": len(before), "replay_views_changed": changed,
+              "replay_xbrl_source_dates_checked": replay_xbrl_dates_checked,
               "expected_growth_excluded_lists": len(expected_growth),
               "keyless_brief_quotes_exact": quotes_ok, "keyless_brief_quotes_not_exact": quotes_bad,
               "briefs": [{"symbol": a, "highlights": b, "latest_transcript_published": c} for a, b, c in brief_rows],
@@ -277,18 +309,36 @@ def cmd_pack(args) -> int:
     meta = json.loads((out / "build_meta.json").read_text())
     c = sqlite3.connect(stage / "finn.sqlite3")
     counts = {t: c.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-              for t in ("companies", "document_versions", "passages", "announcements", "jobs")}
+              for t in ("companies", "document_versions", "passages", "announcements", "jobs",
+                        "xbrl_filings", "xbrl_facts")}
+    xbrl_sources = c.execute(
+        "SELECT x.xbrl_hash, f.rel_path FROM xbrl_filings x LEFT JOIN raw_files f ON f.content_hash=x.xbrl_hash "
+        "WHERE x.parse_state='verified'").fetchall()
     c.close()
+    for digest, relative in xbrl_sources:
+        source = stage / "sources" / relative if relative else None
+        if not source or not source.is_file() or sha256_file(source) != digest:
+            raise ValueError(f"Verified XBRL source missing or mismatched: {digest}")
     manifest = {"seed_built_at": datetime.now(timezone.utc).isoformat(), "source_commit": meta.get("git_commit"),
+                "working_tree": meta.get("working_tree"),
                 "baseline_sha256": meta.get("baseline_sha256"), "counts": counts,
                 "database_sha256": sha256_file(stage / "finn.sqlite3"),
                 "source_files": {str(p.relative_to(stage)): sha256_file(p) for p in files}}
+    digest_input = out / "digest.json"
+    if digest_input.is_file():
+        from finn.digest import read_digest
+        if not read_digest(digest_input)["checks"]["holdings_checked"]:
+            raise ValueError("Refusing to pack a digest with no checked holdings.")
+        shutil.copyfile(digest_input, stage / "digest.json")
+        manifest["digest_sha256"] = sha256_file(stage / "digest.json")
     (stage / "SEED_MANIFEST.json").write_text(json.dumps(manifest, indent=1))
     tarball = out / "finn-seed.tar.gz"
     with tarfile.open(tarball, "w:gz") as tar:
         tar.add(stage / "finn.sqlite3", arcname="finn.sqlite3")
         tar.add(stage / "sources", arcname="sources")
         tar.add(stage / "SEED_MANIFEST.json", arcname="SEED_MANIFEST.json")
+        if digest_input.is_file():
+            tar.add(stage / "digest.json", arcname="digest.json")
     size = tarball.stat().st_size
     print(json.dumps({"tarball": str(tarball), "bytes": size, "mb": round(size / 1e6, 1), "counts": counts,
                       "source_files": len(files), "sha256": sha256_file(tarball)}, indent=2))
@@ -301,6 +351,8 @@ def main() -> int:
     for name, fn in (("prepare", cmd_prepare), ("discover", cmd_discover), ("verify", cmd_verify), ("pack", cmd_pack)):
         sp = sub.add_parser(name)
         sp.add_argument("--out", required=True, help="build directory (inside the git-ignored data/ folder)")
+        if name == "prepare":
+            sp.add_argument("--from-dir", help="baseline directory with an existing packed database and sources")
         if name == "discover":
             sp.add_argument("symbols", nargs="*", help="NSE symbols (default: the 15 portfolio holdings)")
         sp.set_defaults(fn=fn)

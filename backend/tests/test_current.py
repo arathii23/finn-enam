@@ -187,11 +187,42 @@ def test_existing_cached_attachment_is_linked_without_downloading_a_pdf(env):
     existing = store.query_one("SELECT * FROM announcements WHERE attachment_version_id IS NOT NULL LIMIT 1")
     assert existing is not None
     calls = []
-    record = announcement(attchmntFile=existing["attachment_url"])
+    # The two NSE archive families serve the same path. Keep the incoming .in
+    # URL intact while reusing the already-verified .com document version.
+    mirror_attachment = existing["attachment_url"].replace("nseindia.com", "nseindia.in")
+    record = announcement(attchmntFile=mirror_attachment)
     report = current.refresh_portfolio_sources(store, settings, ["TESTCO"], factory(store, lambda _: [record], calls))
     assert report["checked"] == 1
     fresh = store.query_one("SELECT * FROM announcements WHERE published_at LIKE '2026-%'")
     assert fresh["attachment_version_id"] == existing["attachment_version_id"]
     assert fresh["attachment_state"] == "fetched"
+    assert fresh["attachment_url"] == mirror_attachment
     assert all(not request.url.path.endswith(".pdf") for request in calls)
     assert not store.query("SELECT * FROM model_calls")
+
+
+def test_review_reports_per_holding_freshness_and_retains_last_complete_check(env):
+    from finn.service import App
+
+    settings, store, _, _ = env
+    seed(store, "TESTCO", "OTHERCO", "UNKNOWN")
+    app = App(settings, store, start_worker=False)
+    app.portfolio = {"symbols": ["TESTCO", "OTHERCO", "UNKNOWN"]}
+    timestamp = (datetime.now(timezone.utc) - timedelta(hours=26)).isoformat()
+    full = (datetime.now(timezone.utc) - timedelta(hours=40)).isoformat()
+    current.report_path(settings).write_text(json.dumps({
+        "finished_at": datetime.now(timezone.utc).isoformat(), "last_full_check_at": full, "companies": [
+            {"symbol": "TESTCO", "state": "fetched", "checked_at": timestamp, "announcements": 0},
+            {"symbol": "OTHERCO", "state": "timeout", "checked_at": timestamp, "error": "Time limit"},
+            {"symbol": "UNKNOWN", "state": "fetched"},
+        ],
+    }))
+    queue = app.portfolio_queue(mode="live", window="7d")
+    rows = {row["symbol"]: row["freshness"] for row in queue["companies"]}
+    assert rows["TESTCO"]["last_checked"] == timestamp
+    assert 26 * 3600 <= rows["TESTCO"]["age_seconds"] < 27 * 3600
+    assert rows["OTHERCO"]["last_checked"] is None
+    assert rows["UNKNOWN"]["state"] == "not_checked"
+    assert queue["summary"]["checked"] == 1
+    assert queue["summary"]["last_full_check_at"] == full
+    assert {row["symbol"] for row in queue["summary"]["unchecked"]} == {"OTHERCO", "UNKNOWN"}

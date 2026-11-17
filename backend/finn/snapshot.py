@@ -59,7 +59,9 @@ def export_static(app: App, out_dir: Path) -> Dict[str, Any]:
     evidence_ids: Set[str] = set()
     payloads: List[Any] = []
 
-    payloads.append(_write(out, "health.json", app.health()))
+    health = _write(out, "health.json", app.health())
+    payloads.append(health)
+    payloads.append(_write(out, "trust.json", app.trust()))
     for window in ("24h", "7d", "all"):
         payloads.append(_write(out, f"portfolio_{window}.json", app.portfolio_queue(mode="replay", window=window)))
 
@@ -76,6 +78,13 @@ def export_static(app: App, out_dir: Path) -> Dict[str, Any]:
                 payloads.append(_write(out, f"{name}_{symbol}.json", fn(symbol)))
             except NotFound as exc:
                 _write(out, f"{name}_{symbol}.json", {"error": exc.state, "message": str(exc)})
+        for mode in ("replay", "live"):
+            for basis in ("auto", "consolidated", "standalone"):
+                try:
+                    payload = app.financial_cards(symbol, mode, basis)
+                except NotFound as exc:
+                    payload = {"error": exc.state, "message": str(exc)}
+                payloads.append(_write(out, f"financials_{mode}_{basis}_{symbol}.json", payload))
 
     saved = _write(out, "saved.json", app.saved_research())
     payloads.append(saved)
@@ -108,6 +117,7 @@ def export_static(app: App, out_dir: Path) -> Dict[str, Any]:
         "generated_at": utcnow(),
         "replay": app.replay_info(),
         "portfolio_symbols": symbols,
+        "seed": health["seed"],
         "counts": {"companies": len(symbols), "saved_research": len(saved["items"]),
                    "evidence_passages": exported_ev, "documents": len(docs)},
         "scope": "Read-only static snapshot. On-demand research and threshold re-tuning require the live backend.",

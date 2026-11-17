@@ -1,0 +1,260 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-16T23:11:11+00:00",
+  "scope": "Frozen seed, local keyless research and one synthetic filing",
+  "cases": [
+    {
+      "symbol": "HDFCBANK",
+      "sector": "Bank",
+      "question": "What did management say about deposits and liquidity?",
+      "absent_topic": null,
+      "highlights": 5,
+      "citations": 13
+    },
+    {
+      "symbol": "HDFCBANK",
+      "sector": "Bank",
+      "question": "What did the company say about lunar regolith?",
+      "absent_topic": "lunar regolith",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "HDFCBANK",
+      "sector": "Bank",
+      "question": "What did the company say about trilobite hatchery?",
+      "absent_topic": "trilobite hatchery",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "INFY",
+      "sector": "IT services",
+      "question": "What growth guidance did management give?",
+      "absent_topic": null,
+      "highlights": 5,
+      "citations": 14
+    },
+    {
+      "symbol": "INFY",
+      "sector": "IT services",
+      "question": "What did the company say about neutrino telescope?",
+      "absent_topic": "neutrino telescope",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "INFY",
+      "sector": "IT services",
+      "question": "What did the company say about plutonian observatory?",
+      "absent_topic": "plutonian observatory",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "sector": "Pharma",
+      "question": "What did management say about specialty products?",
+      "absent_topic": null,
+      "highlights": 5,
+      "citations": 11
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "sector": "Pharma",
+      "question": "What did the company say about martian greenhouse?",
+      "absent_topic": "martian greenhouse",
+      "highlights": 1,
+      "citations": 4
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "sector": "Pharma",
+      "question": "What did the company say about levitating zeppelins?",
+      "absent_topic": "levitating zeppelins",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "sector": "Cement",
+      "question": "What did management say about cement demand?",
+      "absent_topic": null,
+      "highlights": 4,
+      "citations": 10
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "sector": "Cement",
+      "question": "What did the company say about antimatter propulsion?",
+      "absent_topic": "antimatter propulsion",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "sector": "Cement",
+      "question": "What did the company say about undersea cyclotron?",
+      "absent_topic": "undersea cyclotron",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "MARUTI",
+      "sector": "Auto",
+      "question": "What did management say about exports?",
+      "absent_topic": null,
+      "highlights": 2,
+      "citations": 5
+    },
+    {
+      "symbol": "MARUTI",
+      "sector": "Auto",
+      "question": "What did the company say about jurassic embryos?",
+      "absent_topic": "jurassic embryos",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "MARUTI",
+      "sector": "Auto",
+      "question": "What did the company say about ganymede soilworks?",
+      "absent_topic": "ganymede soilworks",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "HINDUNILVR",
+      "sector": "Consumer",
+      "question": "What did management say about volume growth?",
+      "absent_topic": null,
+      "highlights": 1,
+      "citations": 4
+    },
+    {
+      "symbol": "HINDUNILVR",
+      "sector": "Consumer",
+      "question": "What did the company say about subglacial penguins?",
+      "absent_topic": "subglacial penguins",
+      "highlights": 0,
+      "citations": 0
+    }
+  ],
+  "checks": {
+    "exact_quotes": {
+      "passed": 23,
+      "total": 23,
+      "failures": []
+    },
+    "citations": {
+      "passed": 61,
+      "total": 61,
+      "failures": []
+    },
+    "attributions": {
+      "passed": 29,
+      "total": 29,
+      "failures": []
+    },
+    "absent_questions": {
+      "passed": 10,
+      "total": 10,
+      "failures": []
+    },
+    "partly_overlapping_questions": {
+      "passed": 0,
+      "total": 1,
+      "failures": [
+        "SUNPHARMA: What did the company say about martian greenhouse?"
+      ]
+    },
+    "answerable_questions": {
+      "passed": 6,
+      "total": 6,
+      "failures": []
+    },
+    "injection_fixture": {
+      "passed": 1,
+      "total": 1,
+      "failures": []
+    },
+    "xbrl_oracles": {
+      "passed": 2,
+      "total": 2,
+      "not_run": 0,
+      "failures": []
+    }
+  },
+  "oracles": [
+    {
+      "symbol": "INFY",
+      "status": "pass",
+      "expected_crore": {
+        "revenue": "49244",
+        "ebitda": "11689",
+        "pbt": "11063",
+        "pat": "7838"
+      },
+      "observed_crore": {
+        "revenue": "49244",
+        "ebitda": "11689",
+        "pbt": "11063",
+        "pat": "7838"
+      },
+      "matches": {
+        "revenue": true,
+        "ebitda": true,
+        "pbt": true,
+        "pat": true
+      },
+      "source": {
+        "filing_id": "a3f2cb7fa945d9422e911ef35d8aa5124e25f00ea8e9fbe0e8014c06e6bbb24a",
+        "period_end": "2026-09-30",
+        "published_at": "2026-10-23T14:51:18+00:00",
+        "revision": "Original",
+        "basis": "consolidated",
+        "xbrl_url": "https://nsearchives.nseindia.in/corporate/xbrl/INTEGRATED_FILING_INDAS_1745058_23102026082117_WEB.xml",
+        "xbrl_hash": "3ffaef97b427b567ff5905eca05e40acc88ea4290a6584dcc6a9b4403ae54d99",
+        "pdf_url": null,
+        "concepts": []
+      }
+    },
+    {
+      "symbol": "HDFCBANK",
+      "status": "pass",
+      "expected_crore": {
+        "net_interest_income": "44464.20",
+        "operating_profit_before_provisions": "32871.54",
+        "provisions": "4209"
+      },
+      "observed_crore": {
+        "net_interest_income": "44464.2",
+        "operating_profit_before_provisions": "32871.54",
+        "provisions": "4209"
+      },
+      "matches": {
+        "net_interest_income": true,
+        "operating_profit_before_provisions": true,
+        "provisions": true
+      },
+      "source": {
+        "filing_id": "bf8620f9025777d1e517908400d5c1693d532921597751abf78ffe3a008e771f",
+        "period_end": "2026-09-30",
+        "published_at": "2026-10-17T12:18:12+00:00",
+        "revision": "Original",
+        "basis": "consolidated",
+        "xbrl_url": "https://nsearchives.nseindia.in/corporate/xbrl/INTEGRATED_FILING_BANKING_1740913_17102026054812_WEB.xml",
+        "xbrl_hash": "41840bebf50eacb915fe9ddd2d7cd2bace3d6fffdaa0898a482bd56ddd94aa3b",
+        "pdf_url": null,
+        "concepts": []
+      }
+    }
+  ],
+  "latency_ms": {
+    "p50": 3.19,
+    "p95": 270.57,
+    "samples": 17
+  },
+  "model_calls": 0,
+  "model_cost_usd": 0
+}

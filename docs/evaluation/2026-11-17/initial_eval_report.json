@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-16T22:57:08+00:00",
+  "scope": "Frozen seed, local keyless research and one synthetic filing",
+  "cases": [
+    {
+      "symbol": "HDFCBANK",
+      "sector": "Bank",
+      "question": "What did management say about deposits and liquidity?",
+      "absent_topic": null,
+      "highlights": 5,
+      "citations": 13
+    },
+    {
+      "symbol": "HDFCBANK",
+      "sector": "Bank",
+      "question": "What did the company say about lunar regolith?",
+      "absent_topic": "lunar regolith",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "HDFCBANK",
+      "sector": "Bank",
+      "question": "What did the company say about trilobite hatchery?",
+      "absent_topic": "trilobite hatchery",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "INFY",
+      "sector": "IT services",
+      "question": "What growth guidance did management give?",
+      "absent_topic": null,
+      "highlights": 5,
+      "citations": 14
+    },
+    {
+      "symbol": "INFY",
+      "sector": "IT services",
+      "question": "What did the company say about neutrino telescope?",
+      "absent_topic": "neutrino telescope",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "INFY",
+      "sector": "IT services",
+      "question": "What did the company say about plutonian observatory?",
+      "absent_topic": "plutonian observatory",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "sector": "Pharma",
+      "question": "What did management say about specialty products?",
+      "absent_topic": null,
+      "highlights": 5,
+      "citations": 11
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "sector": "Pharma",
+      "question": "What did the company say about martian greenhouse?",
+      "absent_topic": "martian greenhouse",
+      "highlights": 1,
+      "citations": 4
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "sector": "Pharma",
+      "question": "What did the company say about levitating zeppelins?",
+      "absent_topic": "levitating zeppelins",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "sector": "Cement",
+      "question": "What did management say about cement demand?",
+      "absent_topic": null,
+      "highlights": 4,
+      "citations": 10
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "sector": "Cement",
+      "question": "What did the company say about antimatter propulsion?",
+      "absent_topic": "antimatter propulsion",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "sector": "Cement",
+      "question": "What did the company say about undersea cyclotron?",
+      "absent_topic": "undersea cyclotron",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "MARUTI",
+      "sector": "Auto",
+      "question": "What did management say about exports?",
+      "absent_topic": null,
+      "highlights": 2,
+      "citations": 5
+    },
+    {
+      "symbol": "MARUTI",
+      "sector": "Auto",
+      "question": "What did the company say about jurassic embryos?",
+      "absent_topic": "jurassic embryos",
+      "highlights": 0,
+      "citations": 0
+    },
+    {
+      "symbol": "HINDUNILVR",
+      "sector": "Consumer",
+      "question": "What did management say about volume growth?",
+      "absent_topic": null,
+      "highlights": 1,
+      "citations": 4
+    },
+    {
+      "symbol": "HINDUNILVR",
+      "sector": "Consumer",
+      "question": "What did the company say about subglacial penguins?",
+      "absent_topic": "subglacial penguins",
+      "highlights": 0,
+      "citations": 0
+    }
+  ],
+  "checks": {
+    "exact_quotes": {
+      "passed": 23,
+      "total": 23,
+      "failures": []
+    },
+    "citations": {
+      "passed": 61,
+      "total": 61,
+      "failures": []
+    },
+    "attributions": {
+      "passed": 29,
+      "total": 29,
+      "failures": []
+    },
+    "absent_questions": {
+      "passed": 9,
+      "total": 10,
+      "failures": [
+        "SUNPHARMA: What did the company say about martian greenhouse?"
+      ]
+    },
+    "answerable_questions": {
+      "passed": 6,
+      "total": 6,
+      "failures": []
+    },
+    "injection_fixture": {
+      "passed": 0,
+      "total": 1,
+      "failures": [
+        "Fixture changed the brief"
+      ]
+    },
+    "xbrl_oracles": {
+      "passed": 0,
+      "total": 0,
+      "not_run": 2,
+      "failures": []
+    }
+  },
+  "oracles": [
+    {
+      "symbol": "INFY",
+      "status": "not_run",
+      "reason": "Verified Sep 2026 XBRL absent from seed"
+    },
+    {
+      "symbol": "HDFCBANK",
+      "status": "not_run",
+      "reason": "Verified Sep 2026 XBRL absent from seed"
+    }
+  ],
+  "latency_ms": {
+    "p50": 2.85,
+    "p95": 229.83,
+    "samples": 16
+  },
+  "model_calls": 0,
+  "model_cost_usd": 0
+}

@@ -270,7 +270,12 @@ def refresh_portfolio_sources(store: Store, settings: Settings, symbols: Iterabl
     report["finished_at"] = _now().isoformat(timespec="seconds")
     if report["checked"] == len(chosen):
         report["state"] = "completed"
+        report["last_full_check_at"] = report["finished_at"]
     elif report["checked"]:
         report["state"] = "partial"
+    if (report["state"] != "completed" and cached and isinstance(cached_symbols, list)
+            and all(isinstance(symbol, str) for symbol in cached_symbols) and set(cached_symbols) == set(chosen)):
+        report["last_full_check_at"] = cached.get("last_full_check_at") or (
+            cached.get("finished_at") if cached.get("state") == "completed" else None)
     _persist(settings, report)
     return report
