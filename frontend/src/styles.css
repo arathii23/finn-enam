@@ -241,3 +241,25 @@ select, input[type="date"] { min-height: 44px; width: 100%; min-width: 0; border
 .digest-subject { font-weight: 600; }
 .digest-seen .digest-subject { color: var(--muted); }
 .financial-discrepancy > summary { min-height: 44px; align-content: center; }
+
+.phone-search { display: grid; gap: 0.35rem; margin: 0.9rem 0; font-size: 0.9rem; font-weight: 600; }
+.phone-search input { width: 100%; min-height: 46px; padding: 0.6rem 0.75rem; border: 1px solid var(--line); border-radius: 9px; font: inherit; background: var(--surface); color: var(--ink); }
+.phone-options { margin: 0; padding: 0; border: 0; }
+.phone-options:not(.phone-types) { max-height: 270px; overflow-y: auto; overscroll-behavior: contain; border-block: 1px solid var(--line); }
+.phone-choice { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.7rem 0.15rem; min-height: 52px; cursor: pointer; }
+.phone-choice + .phone-choice { border-top: 1px solid var(--line); }
+.phone-choice input { width: 21px; height: 21px; flex: 0 0 21px; margin: 0.15rem 0; accent-color: var(--accent); }
+.phone-choice strong { font-size: 0.92rem; }
+.phone-types { margin-top: 1rem; }
+.phone-types legend { font-weight: 700; margin-bottom: 0.3rem; }
+.phone-platform { display: flex; gap: 0.5rem; margin: 0.8rem 0; }
+.phone-platform [aria-pressed="true"] { background: var(--banner); color: var(--banner-ink); }
+.phone-instructions { margin: 0.8rem 0; padding-left: 1.2rem; }
+.phone-instructions li { margin: 0.85rem 0; padding-left: 0.1rem; }
+.phone-code { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin: 0.6rem 0; padding: 0.7rem; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); }
+.phone-code code { flex: 1 1 170px; min-width: 0; user-select: all; }
+.phone-feedback { padding: 0.7rem; border-radius: 9px; background: var(--ok-bg); color: var(--ok-ink); overflow-wrap: anywhere; }
+.phone-access { margin: 1rem 0; }
+.phone-alerts summary { cursor: pointer; padding-block: 0.5rem; min-height: 44px; }
+.phone-delete { margin-top: 0.6rem; }
+.phone-delete .btn { margin: 0.5rem 0.5rem 0 0; }

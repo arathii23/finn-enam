@@ -65,6 +65,7 @@ export function CompanyView({ symbol, mode, onMode, latestResults, initialQuesti
         <h1>{company.legal_name}</h1>
         <div className="id-row"><span className="mono">{company.symbol}</span><span className="mono">ISIN {company.isin}</span></div>
         <p className="fine">Identity verified against the NSE equity security master.</p>
+        <p><a href={`#/alerts?company=${encodeURIComponent(symbol)}`}>Follow company filings on your phone</a></p>
         {!IS_STATIC && <ResearchModePicker mode={mode} onChange={onMode} />}
         {mode === "live" && <div className="source-freshness" role="note"><strong>Stored source coverage</strong><p className="fine">Latest publication: {data.freshness?.latest_publication ? istDateTime(data.freshness.latest_publication) : "not established"}. Last source check: {data.freshness?.last_checked ? istDateTime(data.freshness.last_checked) : "not recorded"}.</p><p className="fine">{data.freshness?.note || "Research checks for current documents. Stored dates alone do not establish complete or current coverage."}</p></div>}
         {IS_STATIC ? <a className="btn btn-primary btn-block" href={liveAppUrl({ symbol, question: initialQuestion, eventId: initialEventId, mode })}>Research in live app ↗</a> : <button className="btn btn-primary btn-block" onClick={() => start(contextualEvent, initialQuestion)} disabled={!!starting}>

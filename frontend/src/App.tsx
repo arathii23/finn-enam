@@ -14,12 +14,14 @@ import { liveAppUrl, researchPath, savedBriefsUrl } from "./links";
 import { ResearchModePicker } from "./ResearchModePicker";
 import { TrustView } from "./TrustView";
 import { DigestView } from "./DigestView";
+import { AlertsView } from "./AlertsCard";
 
 type Route = (
   | { name: "queue"; landing: boolean }
   | { name: "home" }
   | { name: "notebook" }
   | { name: "trust" }
+  | { name: "alerts"; initialCompany?: string }
   | { name: "company"; symbol: string; latestResults?: boolean }
   | { name: "narrative"; symbol: string }
   | { name: "research"; symbol: string; jobId: string }) & { mode: ResearchMode; question?: string; eventId?: string };
@@ -35,6 +37,7 @@ function parse(hash: string): Route {
   if (parts[0] === "research") return { ...context, name: "home" };
   if (parts[0] === "notebook") return { ...context, name: "notebook" };
   if (parts[0] === "trust") return { ...context, name: "trust" };
+  if (parts[0] === "alerts") return { ...context, name: "alerts", initialCompany: params.get("company")?.toUpperCase() };
   return { ...context, name: "queue", landing: !params.has("mode") };
 }
 
@@ -84,13 +87,13 @@ function AppShell() {
 
   const replay = health?.replay;
   const landing = route.name === "queue" && route.landing;
-  const tab = route.name === "queue" ? "review" : route.name === "notebook" || route.name === "trust" ? route.name : "research";
+  const tab = route.name === "queue" ? "review" : route.name === "notebook" || route.name === "trust" || route.name === "alerts" ? route.name : "research";
   const setMode = (mode: ResearchMode) => route.name === "queue" ? go("/", mode) : go(researchPath({ symbol: "symbol" in route ? route.symbol : undefined, question: route.question, eventId: route.eventId, mode }));
   return (
     <div className="app">
       <header className="mode-banner" role="banner">
         <a href="#/" className="brand">FINN</a>
-        {landing ? <div className="mode"><strong>Portfolio review</strong><span>NSE filings</span></div> : route.name === "trust" ? <div className="mode"><strong>Source coverage</strong><span>Latest verified records in this copy</span></div> : route.name === "notebook" ? <div className="mode"><strong>Your research workspace</strong><span>Saved privately in this browser</span></div> : route.mode === "live" ? <div className="mode"><strong>{route.name === "queue" ? "Current portfolio filings" : "Current-source research"}</strong><span>Source dates and coverage shown on each result</span></div> : replay ? (
+        {landing ? <div className="mode"><strong>Portfolio review</strong><span>NSE filings</span></div> : route.name === "alerts" ? <div className="mode"><strong>Your phone alerts</strong><span>Companies and filing preferences</span></div> : route.name === "trust" ? <div className="mode"><strong>Source coverage</strong><span>Latest verified records in this copy</span></div> : route.name === "notebook" ? <div className="mode"><strong>Your research workspace</strong><span>Saved privately in this browser</span></div> : route.mode === "live" ? <div className="mode"><strong>{route.name === "queue" ? "Current portfolio filings" : "Current-source research"}</strong><span>Source dates and coverage shown on each result</span></div> : replay ? (
           <div className="mode">
             <strong>{replay.label}</strong>
             <span>Filings {shortDate(replay.filing_from)} – {shortDate(replay.filing_to)}</span>
@@ -99,7 +102,7 @@ function AppShell() {
         ) : <div className="mode"><strong>Mode unknown</strong><span>{healthError ? "server unreachable" : "loading…"}</span></div>}
         <ShareButton />
       </header>
-      {IS_STATIC && !landing && (
+      {IS_STATIC && !landing && route.name !== "alerts" && (
         <p className="snapshot-note" role="note">
           Read-only snapshot · browse the Push digest, saved research briefs and primary-source evidence.
           {" "}<a href={liveAppUrl({ mode: "live" })}>Open live research ↗</a> for new questions. The free service may take a minute to wake.
@@ -110,13 +113,14 @@ function AppShell() {
           <a href="#/" aria-current={tab === "review" ? "page" : undefined} className={tab === "review" ? "active" : ""}>Review</a>
           <a href={`#/research?mode=${route.mode}`} aria-current={tab === "research" ? "page" : undefined} className={tab === "research" ? "active" : ""}>Research</a>
           <a href="#/notebook" aria-current={tab === "notebook" ? "page" : undefined} className={tab === "notebook" ? "active" : ""}>Notebook</a>
+          <a href="#/alerts" aria-current={tab === "alerts" ? "page" : undefined} className={tab === "alerts" ? "active" : ""}>Alerts</a>
         </nav>
 
       <main className="main" aria-hidden={evidence ? true : undefined}>
-        {healthError && !landing && <StateBox kind="error" title="FINN server unreachable" action={<button className="btn" onClick={loadHealth}>Retry</button>}>{healthError}</StateBox>}
+        {healthError && !landing && route.name !== "alerts" && <StateBox kind="error" title="FINN server unreachable" action={<button className="btn" onClick={loadHealth}>Retry</button>}>{healthError}</StateBox>}
         {busy && <StateBox kind="loading" title="Starting research…" />}
         {startError && <StateBox kind="error" title="Research could not start" action={<button className="btn btn-small" onClick={() => setStartError(null)}>Dismiss</button>}>{startError}</StateBox>}
-        {!IS_STATIC && !health && !healthError && !landing && <StateBox kind="info" title="Starting up…">
+        {!IS_STATIC && !health && !healthError && !landing && route.name !== "alerts" && <StateBox kind="info" title="Starting up…">
           The free backend can take some time to wake. <a href={savedBriefsUrl}>Open saved briefs</a>
         </StateBox>}
         {landing && <DigestView onOpenCompany={(s) => { window.location.hash = `/c/${encodeURIComponent(s)}?${IS_STATIC ? "results=latest" : "mode=live"}`; }}
@@ -126,6 +130,7 @@ function AppShell() {
         {route.name === "home" && <Home health={health} mode={route.mode} onMode={setMode} />}
         {route.name === "notebook" && <NotebookView />}
         {route.name === "trust" && <TrustView />}
+        {route.name === "alerts" && <AlertsView key={route.initialCompany} initialCompany={route.initialCompany} />}
         {route.name === "company" && <CompanyView key={`${route.symbol}.${route.mode}.${route.latestResults}.${route.question || ""}`} symbol={route.symbol} latestResults={route.latestResults} mode={route.mode} onMode={setMode} initialQuestion={route.question} initialEventId={route.eventId} onResearch={(id) => go(`/c/${encodeURIComponent(route.symbol)}/research/${id}`, route.mode)} onNarrative={() => go(`/c/${encodeURIComponent(route.symbol)}/narrative`, route.mode)} onEvidence={openEvidence} />}
         {route.name === "narrative" && <NarrativeView key={`${route.symbol}.${route.mode}`} symbol={route.symbol} mode={route.mode} onEvidence={openEvidence} onBack={() => go(`/c/${encodeURIComponent(route.symbol)}`, route.mode)} />}
         {route.name === "research" && <ResearchView key={route.jobId} jobId={route.jobId} onEvidence={openEvidence} onBack={() => go(`/c/${encodeURIComponent(route.symbol)}`, route.mode)} onRetry={retry} />}
