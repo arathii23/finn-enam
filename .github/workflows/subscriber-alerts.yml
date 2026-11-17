@@ -2,7 +2,7 @@ name: Check followed-company phone alerts
 
 on:
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: "2-57/5 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -25,17 +25,19 @@ jobs:
     timeout-minutes: 12
     env:
       FINN_BASE_URL: ${{ vars.FINN_BASE_URL || 'https://finn-mow9.onrender.com' }}
-      FINN_PHONE_ALERTS_JOB_TOKEN: ${{ secrets.FINN_PHONE_ALERTS_JOB_TOKEN }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
       DRY_RUN: ${{ github.event_name != 'schedule' && inputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install 'httpx>=0.28,<0.29'
+      - run: python -m pip install -r backend/requirements.txt
       - name: Check current filings for opted-in subscribers
         shell: bash
         run: |
           args=()
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ "${{ github.event_name }}" = "schedule" ]; then args+=(--scheduled); fi
           python scripts/run_subscriber_alerts.py "${args[@]}"
