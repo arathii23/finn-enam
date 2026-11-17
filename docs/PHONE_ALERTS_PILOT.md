@@ -32,10 +32,20 @@ The free ntfy service currently allows 250 messages per day per visitor. FINN re
 
 ## Local verification on 18 November 2026
 
-The backend suite passed 255 tests. Both the live and Pages frontend builds passed. Browser checks passed at 360, 390, 430 and 1280 pixels for both builds, covering selection, test confirmation, activation, changing choices, persistence across reloads, separate browser isolation, access-code restoration, pause, resume, deletion and horizontal overflow. Browser checks used an isolated storage double and a simulated notification sender.
+The backend suite passed 258 tests after the hosted delivery fixes. Both the live and Pages frontend builds passed. Browser checks passed at 360, 390, 430 and 1280 pixels for both builds, covering selection, test confirmation, activation, changing choices, persistence across reloads, separate browser isolation, access-code restoration, pause, resume, deletion and horizontal overflow. Browser checks used an isolated storage double and a simulated notification sender.
 
 The new flow still needs verification against the owner's Upstash database, published scheduler execution, and physical phone receipt. Those checks require the free database credentials and live activation. The earlier owner-only ntfy smoke test is separate from this per-user flow.
 
 The owner-provided Upstash database passed isolated integration checks on 18 November 2026 for writes, fresh-instance reads, separate subscriptions, locking, preference updates, dry-run behavior, routing, deduplication, pausing and deletion. The verification namespace was cleaned up. Provider delivery in those isolated storage checks was simulated.
 
 A hosted test on 18 November exposed HTTP 429 from ntfy when publishing through Render's shared egress. Delivery was moved to the GitHub Actions worker. Standard public-repository Ubuntu runners are free, and subscriber data is read from private Redis without being written into public artifacts or logs. Both setup tests and filing delivery use this worker. [GitHub runner billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+
+## Published activation on 18 November 2026
+
+The feature is published on the existing Render and Pages URLs. Render remains on its Free plan. `FINN_PHONE_ALERTS_ENABLED=1` enables the worker schedule. Real worker run [44171277120](https://github.com/arathii23/finn-enam/actions/runs/44171277120) accepted the live browser's queued test, checked 15 of 15 NSE companies, and reported zero delivery failures. It found no new matching filings after the verification profiles' start times.
+
+Two independent profiles were created and tested through the public API. Real ntfy retained-message checks verified their selected-company test messages. Their saved choices and topics persisted across backend redeployments. Hosted pause, resume, deletion, no-store response headers and Pages CORS were checked. The public Pages interface was exercised at iPhone width through search, multi-company selection, filing-type choices, queuing, automatic acceptance feedback and cleanup. The activation button stayed disabled until provider acceptance. Layouts fit 360, 390 and 430 pixels. Disposable verification subscriptions and access-code transfer files were removed.
+
+To keep the free database allowance practical, the five-minute delivery pass reads a small index of queued tests. Full subscription snapshots are read for filing checks about every thirty minutes. Idle users require no individual record reads. Accepted filing identities retain the eight-day deduplication horizon needed for seven-day source checks. The dispatcher stops when the shared notification allowance is exhausted.
+
+The original hosted failure was ntfy HTTP 429 on Render's shared egress. GitHub worker delivery was accepted successfully after the transport change. Real phone receipt remains a physical check for the subscriber. Scheduler delays and shared free-service limits can delay delivery.
