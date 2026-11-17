@@ -28,7 +28,8 @@ ITEM = {'key': 'test-1', 'title': 'FINN test', 'body': 'Selected: INFY',
         'company_url': 'https://arathii23.github.io/finn-enam/'}
 
 
-def test_pending_receipt_reused_until_actual_delivery(monkeypatch):
+@pytest.mark.parametrize('log_field', ['logs', 'events'])
+def test_pending_receipt_reused_until_actual_delivery(monkeypatch, log_field):
     monkeypatch.setattr('finn.notification_relay.time.sleep', lambda _: None)
     store, requests = ReceiptStore(), []
     state = {'value': 'ACTIVE'}
@@ -41,8 +42,8 @@ def test_pending_receipt_reused_until_actual_delivery(monkeypatch):
             assert request.headers['Upstash-Retries'] == '1'
             return httpx.Response(200, json={'messageId': 'delivery-1'})
         assert request.url.params['messageId'] == 'delivery-1'
-        return httpx.Response(200, json={'logs': [{'messageId': 'other-message', 'state': 'DELIVERED'},
-                                                  {'messageId': 'delivery-1', 'state': state['value']}]})
+        return httpx.Response(200, json={log_field: [{'messageId': 'other-message', 'state': 'DELIVERED'},
+                                                   {'messageId': 'delivery-1', 'state': state['value']}]})
     relay = QStashRelay('https://qstash.upstash.io', 'private-relay-key', store, transport=httpx.MockTransport(respond))
     with pytest.raises(PhoneError, match='still processing'):
         relay('finn_private-topic', ITEM)
