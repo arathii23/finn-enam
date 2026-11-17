@@ -115,6 +115,13 @@ class RedisPhoneStore:
     def save_status(self, value: dict):
         self.command("SET", PREFIX + "status", json.dumps(value))
 
+    def delivery_status(self):
+        value = self.command("GET", PREFIX + "delivery-status")
+        return json.loads(value) if value else None
+
+    def save_delivery_status(self, value: dict):
+        self.command("SET", PREFIX + "delivery-status", json.dumps(value))
+
 
 class PhoneAlerts:
     def __init__(self, store: RedisPhoneStore | None, companies: list[dict], *, sender=None):
@@ -178,7 +185,7 @@ class PhoneAlerts:
         return {"deleted": True}
 
     def test(self, token: str):
-        """Queue one test for the delivery worker without publishing from Render."""
+        """Queue one test for the delivery worker."""
         store, identity = self.require_store(), self.identity(token)
         with store.lock(identity):
             record = store.get(identity)
@@ -197,7 +204,7 @@ class PhoneAlerts:
             return {"accepted": False, "queued": True}
 
     def deliver_tests(self, *, dry_run=False):
-        """Run on the GitHub worker, which owns the publishing network path."""
+        """Send queued tests through the configured delivery transport."""
         store = self.require_store()
         result = {"queued": 0, "sent": 0, "failed": 0}
         with store.lock("test-dispatch", 600):
@@ -222,11 +229,12 @@ class PhoneAlerts:
                         store.save(identity, record)
                         break
                     item = {"title": "FINN · Your phone test",
+                            "key": "phone-test:" + record["test_requested_at"],
                             "body": "Your FINN phone setup test. Your selected companies: " + ", ".join(record["symbols"]) + ". Tap to open Portfolio Review.",
                             "company_url": alerts.DEFAULT_SITE_URL}
                     try:
                         self.sender(record["topic"], item)
-                    except (httpx.HTTPError, OSError) as exc:
+                    except (httpx.HTTPError, OSError, PhoneError) as exc:
                         provider_status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
                         logging.getLogger(__name__).warning("Phone test delivery failed (%s, HTTP %s)", type(exc).__name__, provider_status)
                         record["test_error"] = "The free delivery service is busy. Your test remains queued for the next check."
@@ -239,6 +247,22 @@ class PhoneAlerts:
                     store.save(identity, record)
                     result["sent"] += 1
         return result
+
+    def check(self, refresh, portfolio, *, dry_run=False, scheduled=True):
+        """Shared scheduler entry point. A timer receipt is separate from a source check."""
+        store = self.require_store()
+        with store.lock("delivery-check", 850):
+            tests = self.deliver_tests(dry_run=dry_run)
+            last = store.status()
+            recent = last and (datetime.now(timezone.utc) - datetime.fromisoformat(last['checked_at'])).total_seconds() < 29 * 60
+            if scheduled and (recent or (not dry_run and not store.allowance('filing-check-interval', 1, 29 * 60))):
+                filings = {"skipped": "The next filing check is not due yet."}
+            else:
+                filings = self.dispatch(refresh, portfolio, dry_run=dry_run)
+            result = {"checked_at": timestamp(), "dry_run": dry_run, "tests": tests, "filings": filings}
+            if not dry_run:
+                store.save_delivery_status(result)
+            return result
 
     def dispatch(self, refresh, portfolio, *, dry_run=True):
         store = self.require_store()
