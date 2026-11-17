@@ -1,0 +1,784 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-17T10:34:04.547071+00:00",
+  "checks": {
+    "finished_at": "2026-11-17T10:34:04+00:00",
+    "holdings_total": 15,
+    "holdings_checked": 15,
+    "last_full_check_at": "2026-11-17T10:34:04+00:00",
+    "holdings": [
+      {
+        "symbol": "ASTRAL",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:34:03+00:00",
+        "error": null,
+        "announcements": 1
+      },
+      {
+        "symbol": "BHARTIARTL",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:54+00:00",
+        "error": null,
+        "announcements": 4
+      },
+      {
+        "symbol": "CERA",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:34:04+00:00",
+        "error": null,
+        "announcements": 2
+      },
+      {
+        "symbol": "HCLTECH",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:50+00:00",
+        "error": null,
+        "announcements": 2
+      },
+      {
+        "symbol": "HDFCBANK",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:52+00:00",
+        "error": null,
+        "announcements": 5
+      },
+      {
+        "symbol": "HINDUNILVR",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:58+00:00",
+        "error": null,
+        "announcements": 2
+      },
+      {
+        "symbol": "ICICIBANK",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:53+00:00",
+        "error": null,
+        "announcements": 2
+      },
+      {
+        "symbol": "INFY",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:48+00:00",
+        "error": null,
+        "announcements": 2
+      },
+      {
+        "symbol": "LT",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:55+00:00",
+        "error": null,
+        "announcements": 0
+      },
+      {
+        "symbol": "MARUTI",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:56+00:00",
+        "error": null,
+        "announcements": 1
+      },
+      {
+        "symbol": "RELIANCE",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:51+00:00",
+        "error": null,
+        "announcements": 3
+      },
+      {
+        "symbol": "SUNPHARMA",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:33:59+00:00",
+        "error": null,
+        "announcements": 0
+      },
+      {
+        "symbol": "TITAN",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:34:01+00:00",
+        "error": null,
+        "announcements": 3
+      },
+      {
+        "symbol": "TRENT",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:34:02+00:00",
+        "error": null,
+        "announcements": 3
+      },
+      {
+        "symbol": "ULTRACEMCO",
+        "state": "fetched",
+        "checked_at": "2026-11-17T10:34:00+00:00",
+        "error": null,
+        "announcements": 3
+      }
+    ]
+  },
+  "window": {
+    "from": "2026-11-11",
+    "to": "2026-11-17",
+    "days": 7
+  },
+  "items": [
+    {
+      "id": "ann_35251b97529d257a",
+      "version": "04caaa3af9354864",
+      "symbol": "HDFCBANK",
+      "published_at": "2026-11-17T10:24:24+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "HDFC Bank Limited has informed the Exchange regarding 'Grant of stock options under Employee Stock Option Scheme (ESOS   Plan H-2024) and Grant of Restricted Stock Units under Employees  Stock Incentive Master Scheme   2022'.",
+      "headline": "HDFC Bank Limited has informed the Exchange regarding 'Grant of stock options under Employee Stock Option Scheme (ESOS   Plan H-2024) and Grant of Restricted Stock Units under Employees  Stock Incentive Master Scheme   2022'.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_17112026155359_SE_Intimation_grant_of_ESOP_17112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_308d8c68bd04dc7f",
+      "version": "c605b98204e4335b",
+      "symbol": "INFY",
+      "published_at": "2026-11-17T09:28:51+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "Infosys Limited has informed the Exchange regarding 'Infosys Positioned as a Leader in the 2026 Gartner® Magic Quadrant  for Public Cloud Optimization and Transformation Services for the Fourth Consecutive Year'.",
+      "headline": "Infosys Limited has informed the Exchange regarding 'Infosys Positioned as a Leader in the 2026 Gartner® Magic Quadrant  for Public Cloud Optimization and Transformation Services for the Fourth Consecutive Year'.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/Infosys_17112026145826_PR_17112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_9b8701bd6e20ccdf",
+      "version": "ce3bf0b9b68972e6",
+      "symbol": "ULTRACEMCO",
+      "published_at": "2026-11-17T09:10:05+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "UltraTech Cement Limited has informed the Exchange about Copy of Newspaper Publication",
+      "headline": "UltraTech Cement Limited has informed the Exchange about Copy of Newspaper Publication",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/ULTRACEMCO_17112026143809_SEIntimation17112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_37e4dea401033edd",
+      "version": "445b4b4bac942c4d",
+      "symbol": "TRENT",
+      "published_at": "2026-11-17T08:36:23+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Trent Limited has informed the Exchange about Intimation of schedule of Analyst / Institutional Investors Meetings",
+      "headline": "Trent Limited has informed the Exchange about Intimation of schedule of Analyst / Institutional Investors Meetings",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/TRENT_17112026140114_Investor_Analyst_Meeting_17112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_a3288ee19881cd03",
+      "version": "447a5b8ed17a631b",
+      "symbol": "HDFCBANK",
+      "published_at": "2026-11-17T08:29:07+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "HDFC Bank Limited has informed the Exchange regarding Allotment of 1412278  Shares.",
+      "headline": "HDFC Bank Limited has informed the Exchange regarding Allotment of 1412278  Shares.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_17112026135613_SELetterESOP17112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_c43ce9ac0021b32f",
+      "version": "a02741a837d2a3f1",
+      "symbol": "RELIANCE",
+      "published_at": "2026-11-16T13:56:16+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "This is further to the disclosure dated November 6, 2026 made by the Company. We wish to inform you that the Company executives participated in the Institutional Investors' Meeting - CLSA India Forum and no unpublished price sensitive information was shared/discussed in the said one-on-one meeting.",
+      "headline": "This is further to the disclosure dated November 6, 2026 made by the Company. We wish to inform you that the Company executives participated in the Institutional Investors' Meeting - CLSA India Forum and no unpublished price sensitive information was shared/discussed in the said one-on-one meeting.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/kavinavora_16112026192449_SE_16112026__1_.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_f40ad22145f026a8",
+      "version": "bd3e8c8d338ee0d7",
+      "symbol": "BHARTIARTL",
+      "published_at": "2026-11-16T13:37:17+00:00",
+      "category": "litigation",
+      "base_tier": 1,
+      "tier": 1,
+      "tier_reason": "Litigation / regulatory order",
+      "subject": "Bharti Airtel Limited has informed the Exchange about Action(s) taken or orders passed",
+      "headline": "Bharti Airtel Limited has informed the Exchange about Action(s) taken or orders passed",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_16112026190520_BhartiAirtelSTXdisclosure.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_0168239e056aa3fb",
+      "version": "41ea6530f03b80bd",
+      "symbol": "CERA",
+      "published_at": "2026-11-16T12:39:22+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "Cera Sanitaryware Limited has informed the Exchange about Copy of Newspaper Publication",
+      "headline": "Cera Sanitaryware Limited has informed the Exchange about Copy of Newspaper Publication",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/CERA_16112026180852_CERANPTransfer16112026s.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_e3b326bbf1bbedc1",
+      "version": "3dc35fc9624c4ae4",
+      "symbol": "HINDUNILVR",
+      "published_at": "2026-11-16T11:49:24+00:00",
+      "category": "agm_egm",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Shareholder vote / postal ballot",
+      "subject": "Newspaper Advertisement for Notice of Postal Ballot",
+      "headline": "Newspaper Advertisement for Notice of Postal Ballot",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HINDUNILVR_16112026171909_SENewspaperAdCoverLettersigned.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_1b7c116d451f1565",
+      "version": "07df6336690de493",
+      "symbol": "TRENT",
+      "published_at": "2026-11-16T11:32:41+00:00",
+      "category": "credit_rating",
+      "base_tier": 1,
+      "tier": 1,
+      "tier_reason": "Credit rating",
+      "subject": "Trent Limited has informed the Exchange about Credit Rating",
+      "headline": "Trent Limited has informed the Exchange about Credit Rating",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/TRENT_16112026170133_BSENSECARERATING161120260signed.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_1cc0542293ead8df",
+      "version": "647c9b5bb5bb3ac8",
+      "symbol": "ICICIBANK",
+      "published_at": "2026-11-16T04:46:37+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "ICICI Bank Limited has informed the Exchange regarding Allotment of 3271754  Shares.",
+      "headline": "ICICI Bank Limited has informed the Exchange regarding Allotment of 3271754  Shares.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/ICICIBANK1_16112026101507_Lettertoexchange.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_e717444b2f971bed",
+      "version": "1a591be082948ea3",
+      "symbol": "BHARTIARTL",
+      "published_at": "2026-11-14T10:22:09+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "Bharti Airtel Limited has informed the Exchange about Copy of Newspaper Publication",
+      "headline": "Bharti Airtel Limited has informed the Exchange about Copy of Newspaper Publication",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_14112026155152_STX_intimation.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_a3fb4f5931fade59",
+      "version": "4634861895ae203d",
+      "symbol": "HINDUNILVR",
+      "published_at": "2026-11-13T15:03:19+00:00",
+      "category": "agm_egm",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Shareholder vote / postal ballot",
+      "subject": "Notice of Postal Ballot for revision in overall limits of commission payable to Non-Executive Directors",
+      "headline": "Notice of Postal Ballot for revision in overall limits of commission payable to Non-Executive Directors",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HINDUNILVR_13112026203221_SEIntimationPBNoticemergedsigned.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_5f0949232862e8eb",
+      "version": "3dd65759edfef233",
+      "symbol": "RELIANCE",
+      "published_at": "2026-11-13T12:55:01+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Please note that the Company executives will be participating in the Institutional Investors' Meeting - Morgan Stanley 25th Annual Asia-Pacific Summit, scheduled to be held on November 18 & 19, 2026 at Singapore. It is expected that the meeting with the investors will be on one-on-one basis.",
+      "headline": "Please note that the Company executives will be participating in the Institutional Investors' Meeting - Morgan Stanley 25th Annual Asia-Pacific Summit, scheduled to be held on November 18 & 19, 2026 at Singapore. It is expected that the meeting with the investors will be on one-on-one basis.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/kavinavora_13112026182446_SE_13112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_37edecf22d1e4bdb",
+      "version": "93efbef00da31de5",
+      "symbol": "HDFCBANK",
+      "published_at": "2026-11-13T11:05:23+00:00",
+      "category": "management_change",
+      "base_tier": 1,
+      "tier": 1,
+      "tier_reason": "Management / board change",
+      "subject": "HDFC Bank Limited has informed the Exchange regarding Change in Director(s) of the company.",
+      "headline": "HDFC Bank Limited has informed the Exchange regarding Change in Director(s) of the company.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_13112026163422_SE_Intimation-_VSR.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_c68ca3f9e5676ef9",
+      "version": "ad8f43d0ebd7fa97",
+      "symbol": "HCLTECH",
+      "published_at": "2026-11-13T10:32:09+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "HCL Technologies Limited has informed the Exchange about Copy of Newspaper Publication",
+      "headline": "HCL Technologies Limited has informed the Exchange about Copy of Newspaper Publication",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HCLTECH_13112026155901_IntimationtostockexchangesNov.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_9382229848183c71",
+      "version": "c3bbc19f3b99d06d",
+      "symbol": "ULTRACEMCO",
+      "published_at": "2026-11-13T09:48:51+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "UltraTech Cement Limited has informed the Exchange about Schedule of meet",
+      "headline": "UltraTech Cement Limited has informed the Exchange about Schedule of meet",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/ULTRACEMCO1_13112026151818_Investor_meet_intimation18112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_1cf550c843c32076",
+      "version": "2a81e2069439d289",
+      "symbol": "TRENT",
+      "published_at": "2026-11-13T05:54:23+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "Trent Limited has informed the Exchange about Reminder letter to  shareholders to Dematerialise the Shares",
+      "headline": "Trent Limited has informed the Exchange about Reminder letter to  shareholders to Dematerialise the Shares",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/TRENT_13112026112141_Reg_30_-_Dematerialisation_letter_to_shareholders.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_55690b25c96076d3",
+      "version": "b56d295de935e9f7",
+      "symbol": "RELIANCE",
+      "published_at": "2026-11-12T14:53:38+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Please note that the Company executives will be participating in the Institutional Investors' Meeting - JM Financial India Conference, scheduled to be held on November 17, 2026 at Mumbai. It is expected that the meeting with the investors will be on one-on-one basis.",
+      "headline": "Please note that the Company executives will be participating in the Institutional Investors' Meeting - JM Financial India Conference, scheduled to be held on November 17, 2026 at Mumbai. It is expected that the meeting with the investors will be on one-on-one basis.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/kavinavora_12112026202324_SE_12112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_796831ea907283e7",
+      "version": "61d2f7a501309729",
+      "symbol": "HCLTECH",
+      "published_at": "2026-11-12T14:05:15+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "HCL Technologies Limited has informed the Exchange regarding 'Release-  HCLTech featured among the top 50 global companies in Forbes World s Top Companies for Women 2026  '.",
+      "headline": "HCL Technologies Limited has informed the Exchange regarding 'Release-  HCLTech featured among the top 50 global companies in Forbes World s Top Companies for Women 2026  '.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HCLTECH_12112026193455_Release12November2026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_21b9de6c7783f703",
+      "version": "38046c4c1a77ae11",
+      "symbol": "TITAN",
+      "published_at": "2026-11-12T13:15:53+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "Titan Company Limited has informed the Exchange about Redemption of Commercial Paper",
+      "headline": "Titan Company Limited has informed the Exchange about Redemption of Commercial Paper",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/TITAN_12112026184505_SECPRedemption12112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_59f3d585d7cdf9d8",
+      "version": "da8f2193d0afed33",
+      "symbol": "ICICIBANK",
+      "published_at": "2026-11-12T12:38:21+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "ICICI Bank Limited has informed the Exchange about Disclosure under Regulation 30 read with para A of Schedule III and Regulation 46(2) of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015",
+      "headline": "ICICI Bank Limited has informed the Exchange about Disclosure under Regulation 30 read with para A of Schedule III and Regulation 46(2) of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/ICICI2022_12112026180755_BSENSE12112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_cfc1e072b345daa2",
+      "version": "ef9b3f8d67969d57",
+      "symbol": "BHARTIARTL",
+      "published_at": "2026-11-12T12:06:22+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Bharti Airtel Limited has informed the Exchange about Transcript",
+      "headline": "Bharti Airtel Limited has informed the Exchange about Transcript",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_12112026172851_Airtel_Stx_Intimation.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_05eab691b86e5477",
+      "version": "4abd25e2483ee6ec",
+      "symbol": "HDFCBANK",
+      "published_at": "2026-11-12T12:03:26+00:00",
+      "category": "management_change",
+      "base_tier": 1,
+      "tier": 1,
+      "tier_reason": "Management / board change",
+      "subject": "HDFC Bank Limited has informed the Exchange about Approval from the Reserve Bank of India for re-appointment of Mr. V. Srinivasa Rangan asthe Whole-time Director (designated as Executive Director) of HDFC Bank Limited",
+      "headline": "HDFC Bank Limited has informed the Exchange about Approval from the Reserve Bank of India for re-appointment of Mr. V. Srinivasa Rangan asthe Whole-time Director (designated as Executive Director) of HDFC Bank Limited",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_12112026173223_SE_Intimation-_VSR.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_c439033a891657e6",
+      "version": "5e8f4c626da9c39a",
+      "symbol": "CERA",
+      "published_at": "2026-11-12T10:42:55+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Cera Sanitaryware Limited has informed the Exchange about Transcript of Q2 and H1 FY27 Earnings Conference Call",
+      "headline": "Cera Sanitaryware Limited has informed the Exchange about Transcript of Q2 and H1 FY27 Earnings Conference Call",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/CERA_12112026161147_CERAQ2Transcript12112026s.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_142daa263d749438",
+      "version": "009115c553e48e07",
+      "symbol": "TITAN",
+      "published_at": "2026-11-12T10:00:01+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Titan Company Limited has informed the Exchange about Schedule of Analyst / Institutional Investor Meeting",
+      "headline": "Titan Company Limited has informed the Exchange about Schedule of Analyst / Institutional Investor Meeting",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/TITAN_12112026152942_SEintimation_12_Nov_26.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_121b55c541367eba",
+      "version": "4f3b820196ef04fb",
+      "symbol": "HDFCBANK",
+      "published_at": "2026-11-12T08:57:54+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "HDFC Bank Limited has informed the Exchange about Schedule of meet",
+      "headline": "HDFC Bank Limited has informed the Exchange about Schedule of meet",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/HDFCBANK3_12112026142725_Analystmeetintimation12112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_e52b80111235cc97",
+      "version": "4b2a89d2fea6ec03",
+      "symbol": "MARUTI",
+      "published_at": "2026-11-12T06:27:21+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Maruti Suzuki India Limited has informed the Exchange about Schedule of meet",
+      "headline": "Maruti Suzuki India Limited has informed the Exchange about Schedule of meet",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/MARUTIASHISH_12112026115520_Investor_Meeting_17_18_19Nov2026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_f4c13fa7f20bca14",
+      "version": "ac4f0fc9717096ba",
+      "symbol": "INFY",
+      "published_at": "2026-11-12T05:49:59+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "Infosys Limited has informed the Exchange regarding 'Six Promising Researchers Win the Infosys Prize 2026 Awarded by the Infosys Science Foundation'.",
+      "headline": "Infosys Limited has informed the Exchange regarding 'Six Promising Researchers Win the Infosys Prize 2026 Awarded by the Infosys Science Foundation'.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/Infosys_12112026111940_PR_12112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_ed6a9a9f5cf299e8",
+      "version": "7179affd22ab67c8",
+      "symbol": "BHARTIARTL",
+      "published_at": "2026-11-11T13:03:54+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Bharti Airtel Limited has informed the Exchange about Schedule of meet",
+      "headline": "Bharti Airtel Limited has informed the Exchange about Schedule of meet",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/BHARTIARTL_11112026183310_BhartiAirtelSTXIntimation.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_46179e59f5bc94ce",
+      "version": "40880ae1b5d31a53",
+      "symbol": "ULTRACEMCO",
+      "published_at": "2026-11-11T11:38:39+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "UltraTech Cement Limited has informed the Exchange about Schedule of meet",
+      "headline": "UltraTech Cement Limited has informed the Exchange about Schedule of meet",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/ULTRACEMCO1_11112026170757_Investormeetintimation11112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_fe82420b4acaf055",
+      "version": "51bfc4086ee926ff",
+      "symbol": "TITAN",
+      "published_at": "2026-11-11T09:09:57+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Titan Company Limited has informed the Exchange about Earnings Call Transcripts",
+      "headline": "Titan Company Limited has informed the Exchange about Earnings Call Transcripts",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/TITAN_11112026143915_SEearningcalltranscriptsQ2.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_598210ef74a71063",
+      "version": "4413b0a31054a057",
+      "symbol": "ASTRAL",
+      "published_at": "2026-11-11T09:08:11+00:00",
+      "category": "earnings_call",
+      "base_tier": 2,
+      "tier": 2,
+      "tier_reason": "Earnings call / investor interaction",
+      "subject": "Astral Limited has informed the Exchange about Transcript of Earnings Call held on November 05, 2026",
+      "headline": "Astral Limited has informed the Exchange about Transcript of Earnings Call held on November 05, 2026",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/ASTRAL_11112026143751_Transcript.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    }
+  ]
+}
