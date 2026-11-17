@@ -290,7 +290,17 @@ def _same_doc_url(a: Optional[str], b: Optional[str]) -> bool:
     if not a or not b:
         return False
     pa, pb = urlparse(a.strip()), urlparse(b.strip())
-    return pa.netloc.lower() == pb.netloc.lower() and pa.path == pb.path
+    def host_key(parsed):
+        host = (parsed.hostname or "").lower()
+        # NSE's .com and .in archive mirrors publish the same attachment paths.
+        # Preserve the original URL in evidence, but compare those exact paths
+        # across the two explicitly trusted families.
+        labels = {"", "www.", "nsearchives.", "archives."}
+        for prefix in labels:
+            if host in {prefix + "nseindia.com", prefix + "nseindia.in"}:
+                return prefix + "nseindia"
+        return parsed.netloc.lower()
+    return host_key(pa) == host_key(pb) and pa.path == pb.path
 
 
 def _parse_date_field(value: str) -> Tuple[Optional[str], Optional[str]]:
@@ -543,10 +553,11 @@ def link_announcement_attachment(store: Store, fetcher: Fetcher, company: Compan
 
 
 def link_existing_versions(store: Store, company: Company) -> int:
-    """Link announcements to already-stored versions whose source URL equals the attachment URL."""
+    """Link announcements to stored versions with the same source path and NSE mirror host."""
     linked = 0
+    versions = store.query("SELECT version_id, source_url FROM document_versions WHERE company_id=?", (company.company_id,))
     for ann in store.query("SELECT announcement_id, attachment_url FROM announcements WHERE company_id=? AND attachment_url IS NOT NULL AND attachment_version_id IS NULL", (company.company_id,)):
-        ver = store.query_one("SELECT version_id FROM document_versions WHERE company_id=? AND source_url=?", (company.company_id, ann["attachment_url"]))
+        ver = next((row for row in versions if _same_doc_url(row["source_url"], ann["attachment_url"])), None)
         if ver:
             store.execute("UPDATE announcements SET attachment_version_id=?, attachment_state='fetched' WHERE announcement_id=?",
                           (ver["version_id"], ann["announcement_id"]))

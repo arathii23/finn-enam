@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Literal, Optional
@@ -17,9 +19,57 @@ import httpx
 
 from ..db import Store, new_id, utcnow
 
-Expect = Literal["pdf", "csv", "json", "html"]
-SUFFIX = {"pdf": ".pdf", "csv": ".csv", "json": ".json", "html": ".html"}
-MEDIA = {"pdf": "application/pdf", "csv": "text/csv", "json": "application/json", "html": "text/html"}
+Expect = Literal["pdf", "csv", "json", "html", "xml"]
+SUFFIX = {"pdf": ".pdf", "csv": ".csv", "json": ".json", "html": ".html", "xml": ".xml"}
+MEDIA = {"pdf": "application/pdf", "csv": "text/csv", "json": "application/json", "html": "text/html", "xml": "application/xml"}
+
+# NSE serves the same public API and archive paths from both host families.
+# Keep this explicit: source records are untrusted, and an NSE redirect must
+# never turn into a request to an unrelated public host.
+NSE_HOSTS = frozenset(
+    host
+    for family in ("nseindia.com", "nseindia.in")
+    for host in (family, *(f"{subdomain}.{family}" for subdomain in ("www", "nsearchives", "archives")))
+)
+NSE_MIRROR_FAMILIES = {"com", "in"}
+
+
+def _configured_nse_families() -> tuple[str, ...]:
+    raw = os.environ.get("NSE_HOST_FAMILIES", "com,in")
+    families = tuple(part.strip().lower() for part in raw.split(",") if part.strip())
+    if not families or any(family not in NSE_MIRROR_FAMILIES for family in families):
+        raise ValueError("NSE_HOST_FAMILIES must be a comma-separated order of com and/or in")
+    if len(set(families)) != len(families):
+        raise ValueError("NSE_HOST_FAMILIES must not repeat a host family")
+    return families
+
+
+def _is_nse_host(host: Optional[str]) -> bool:
+    return (host or "").lower() in NSE_HOSTS
+
+
+def _nse_candidate_urls(url: str) -> list[str]:
+    """Return the configured NSE mirror order for NSE fetches only."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if not _is_nse_host(host):
+        return [url]
+    prefix = ""
+    suffix = host
+    for label in ("www.", "nsearchives.", "archives."):
+        if host.startswith(label):
+            prefix, suffix = label, host[len(label):]
+            break
+    if suffix not in ("nseindia.com", "nseindia.in"):
+        return [url]
+    candidates = []
+    for family in _configured_nse_families():
+        candidate_host = prefix + f"nseindia.{family}"
+        candidates.append(parsed._replace(netloc=candidate_host).geturl())
+    # If configuration omits the original family, it remains a final fallback.
+    if url not in candidates:
+        candidates.append(url)
+    return candidates
 
 BROWSER_HEADERS = {
     "User-Agent": (
@@ -78,7 +128,7 @@ def validate_bytes(data: bytes, expect: Expect) -> Optional[str]:
         if not data.startswith(b"%PDF-"):
             return "bytes do not start with %PDF- signature" + (" (HTML page received)" if looks_html else "")
         return None
-    if looks_html and expect != "html":
+    if looks_html and expect not in ("html", "xml"):
         return "HTML page received instead of data"
     if expect == "json":
         try:
@@ -92,6 +142,16 @@ def validate_bytes(data: bytes, expect: Expect) -> Optional[str]:
             return "CSV is not UTF-8 text"
         if "," not in first:
             return "CSV header row has no comma separators"
+    if expect == "xml":
+        if not head.startswith(b"<?xml") and not head.startswith(b"<"):
+            return "XML document has no markup start"
+        if re.search(br"<!\s*(?:DOCTYPE|ENTITY)\b", data, flags=re.IGNORECASE):
+            return "XML document declarations are not accepted"
+        try:
+            import xml.etree.ElementTree as ET
+            ET.fromstring(data)
+        except Exception as exc:  # noqa: BLE001
+            return f"invalid XML: {exc.__class__.__name__}"
     return None
 
 
@@ -139,12 +199,31 @@ class Fetcher:
         headers: Optional[dict] = None,
         store_body: bool = True,
         retries: int = 1,
+        _try_nse_mirrors: bool = True,
     ) -> FetchResult:
+        candidates = _nse_candidate_urls(url) if _try_nse_mirrors else [url]
+        if len(candidates) > 1:
+            result = None
+            invalid = None
+            for candidate in candidates:
+                result = self.get(candidate, source_kind=source_kind, expect=expect, company_id=company_id,
+                                  headers=headers, store_body=store_body, retries=retries,
+                                  _try_nse_mirrors=False)
+                if result.ok:
+                    return result
+                if result.state == "invalid_document" and invalid is None:
+                    invalid = result
+            # Preserve a source validation failure when another mirror is absent.
+            assert result is not None
+            return invalid or result
+
         attempt_id = new_id("att")
         started = utcnow()
         state, status, final_url, data, ctype, error = "error", None, None, None, None, None
         for attempt in range(retries + 1):
-            state, status, final_url, data, ctype, error = self._get_once(url, expect, headers)
+            state, status, final_url, data, ctype, error = self._get_once(
+                url, expect, headers, enforce_nse_hosts=source_kind.startswith("nse_") or _is_nse_host(urlparse(url).hostname)
+            )
             transient = state == "timeout" or (state == "error" and (status or 0) >= 500)
             if not transient or attempt == retries:
                 break
@@ -174,11 +253,13 @@ class Fetcher:
         return FetchResult(attempt_id, url, final_url, state, status, data if state == "fetched" else None,
                            digest, ctype, error, retrieved_at)
 
-    def _get_once(self, url: str, expect: Expect, headers: Optional[dict]):
+    def _get_once(self, url: str, expect: Expect, headers: Optional[dict], *, enforce_nse_hosts: bool = False):
         current = url
         try:
             for _hop in range(6):
                 validate_public_https(current)
+                if enforce_nse_hosts and not _is_nse_host(urlparse(current).hostname):
+                    raise UnsafeURL("NSE request redirected outside the NSE host allowlist")
                 self._pace()
                 with self.client.stream("GET", current, headers=headers or {}) as resp:
                     if resp.status_code in (301, 302, 303, 307, 308):

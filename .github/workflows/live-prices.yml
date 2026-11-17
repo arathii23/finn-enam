@@ -1,8 +1,7 @@
 name: Refresh live prices
 
 # Free, serverless live data: a scheduled job fetches Yahoo EOD and publishes live_prices.json
-# to the `live-data` branch (force-pushed as a single commit, so history stays tiny and GitHub
-# Pages is never rebuilt). The static site fetches it cross-origin from raw.githubusercontent.com
+# to the `live-data` branch without rebuilding GitHub Pages. The static site fetches it cross-origin from raw.githubusercontent.com
 # and shows "last updated". The cron is best-effort: GitHub throttles scheduled runs on quiet
 # repositories (observed gaps of several hours), so rely on the timestamp, not the interval.
 
@@ -15,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: live-prices
+  group: live-data-publish
   cancel-in-progress: false
 
 jobs:
@@ -31,12 +30,13 @@ jobs:
       - name: Publish to live-data branch
         run: |
           set -euo pipefail
-          mkdir -p _pub && cp live_prices.json _pub/live_prices.json
+          git fetch --quiet origin live-data:refs/remotes/origin/live-data
+          git worktree add --quiet --detach _pub origin/live-data
+          cp live_prices.json _pub/live_prices.json
           cd _pub
-          git init -q
-          git checkout -q -b live-data
           git config user.name "finn-live-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add live_prices.json
-          git commit -q -m "live prices $(date -u +%FT%TZ)"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" live-data
+          git add -- live_prices.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -q -m "Update end-of-day prices"
+          git push -q origin HEAD:refs/heads/live-data

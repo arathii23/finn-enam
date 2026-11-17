@@ -22,6 +22,10 @@ MAX_HIGHLIGHTS = 6
 _ABBR = r"(?<!\b[A-Z])(?<!\bRs)(?<!\bNo)(?<!\bMr)(?<!\bMs)(?<!\bQ[1-4])(?<!\bvs)(?<!\bFY)"
 _SENT = re.compile(_ABBR + r"(?<=[.!?])\s+(?=[A-Z0-9“\"'])")
 _NUM = re.compile(r"\d")
+# An instruction to the answering system is not a company statement.
+_SOURCE_INSTRUCTION = re.compile(
+    r"\b(?:ignore|disregard|override)\s+(?:all\s+)?(?:previous|prior|above|system)\s+(?:instructions|prompts?)\b",
+    re.I)
 # Conditions/qualifiers whose preceding or following sentence carries the real caveat.
 _QUALIFIER = re.compile(r"\b(but|however|subject to|provided|expect|guidance|target|assuming|"
                         r"excluding|including|caveat|barring|depend|assumptions?|assumes?|offset|headwinds?|tailwinds?)\b", re.I)
@@ -128,8 +132,10 @@ def build_source_brief(sections: Dict[str, List[Dict]], question: Optional[str])
         for p in passages:
             if p["passage_id"] in context_ids or p.get("_context_for"):
                 continue  # context is shown with its anchor, never as an incomplete standalone answer
+            if _SOURCE_INSTRUCTION.match((p.get("text") or "").lstrip()):
+                continue
             quote = _select_quote(p.get("text") or "", terms, vocab, want_numbers)
-            if quote and not _PLEASANTRY.match(quote):
+            if quote and not _PLEASANTRY.match(quote) and not _SOURCE_INSTRUCTION.search(quote):
                 candidates.append((p, quote))
         if terms:
             # Rank the selected statement, not the entire surrounding passage.
@@ -180,6 +186,8 @@ def build_source_brief(sections: Dict[str, List[Dict]], question: Optional[str])
                 group.append((ctx, condition))
             if not group or added + len(group) > section_limit or len(highlights) + len(group) > MAX_HIGHLIGHTS:
                 continue  # A known condition and headline fit together, or neither is shown.
+            if any(_SOURCE_INSTRUCTION.search(fragment) for _, fragment in group):
+                continue
             for source, fragment in group:
                 seen.add(fragment)
                 quoted_sources.append((source, set(re.findall(r"[a-z]+", fragment.lower())),

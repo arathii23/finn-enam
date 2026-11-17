@@ -1,0 +1,98 @@
+name: Check phone alerts
+
+# Manual runs default to dry-run. Enable delivery separately after phone testing.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List notifications without sending them"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-data-publish
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      FINN_ALERT_CATEGORIES: ${{ vars.FINN_ALERT_CATEGORIES }}
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      FINN_BASE_URL: ${{ vars.FINN_BASE_URL || 'https://finn-mow9.onrender.com' }}
+      FINN_MODEL_PROVIDER: keyless
+      PYTHONPATH: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the existing source-check dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Restore public live-data state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin live-data:refs/remotes/origin/live-data
+          git worktree add --quiet --detach _state origin/live-data
+          rm -f _state/alerts_status.json
+      - name: Probe current NSE announcement access from this runner
+        id: nse_probe
+        continue-on-error: true
+        run: timeout 90 python scripts/probe_nse_runner.py
+      - name: Resolve dry-run setting
+        id: mode
+        shell: bash
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ] || [ "${{ vars.FINN_ALERTS_ENABLED }}" != "1" ]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check and send directly from the runner
+        if: steps.nse_probe.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          FINN_DATA_DIR: ${{ runner.temp }}/finn-alerts-data
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.mode.outputs.dry_run }}" = "true" ] || [ -z "$NTFY_TOPIC" ]; then
+            python -m finn alerts --days 7 --prices _state/live_prices.json --state _state/alerts_state.json --status-out _state/alerts_status.json --dry-run
+          else
+            python -m finn alerts --days 7 --prices _state/live_prices.json --state _state/alerts_state.json --status-out _state/alerts_status.json
+          fi
+      - name: Use FINN's existing Render refresh when runner access is unavailable
+        if: steps.nse_probe.outcome != 'success' || (steps.nse_probe.outcome == 'success' && hashFiles('_state/alerts_status.json') == '')
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--base-url "$FINN_BASE_URL" --days 7 --prices _state/live_prices.json --state _state/alerts_state.json --out-state _state/alerts_state.json --out-status _state/alerts_status.json)
+          if [ "${{ steps.mode.outputs.dry_run }}" = "true" ]; then args+=(--dry-run); fi
+          python scripts/run_scheduled_alerts.py "${args[@]}"
+      - name: Refresh the public NSE calendar
+        if: steps.nse_probe.outcome == 'success' && steps.mode.outputs.dry_run != 'true'
+        continue-on-error: true
+        env:
+          FINN_DATA_DIR: ${{ runner.temp }}/finn-alerts-data
+        run: timeout 90 python -m finn calendar --out _state/finn-events.ics
+      - name: Publish alert state and last-check time to live-data
+        if: always() && hashFiles('_state/alerts_status.json') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _state
+          git config user.name "finn-live-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A -- alerts_status.json
+          if [ -f alerts_state.json ]; then git add -- alerts_state.json; fi
+          if [ -f finn-events.ics ]; then git add -- finn-events.ics; fi
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -q -m "Update alert check status"
+          git push -q origin HEAD:refs/heads/live-data

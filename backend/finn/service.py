@@ -20,6 +20,7 @@ from .prioritize import classify, eod_anomaly
 from . import management, quarterly
 from .research import run_research
 from .sources import documents, nse
+from .sources import xbrl
 from .sources.fetch import Fetcher
 
 STAGES = ["resolving_company", "discovering_sources", "downloading_sources", "finding_documents", "reading_sources", "preparing_research"]
@@ -54,6 +55,7 @@ class App:
         self._queue: "queue.Queue[str]" = queue.Queue(maxsize=20)
         self._submission_lock = threading.Lock()
         self._current_refresh_lock = threading.Lock()
+        self._xbrl_refresh_lock = threading.Lock()
         self.fetcher_factory = fetcher_factory or (lambda: Fetcher(self.store, max_bytes=settings.max_download_bytes))
         self._mark_interrupted()
         if start_worker:
@@ -64,7 +66,9 @@ class App:
         counts = self.store.query_one(
             "SELECT (SELECT COUNT(*) FROM companies) AS companies, (SELECT COUNT(*) FROM document_versions) AS documents,"
             " (SELECT COUNT(*) FROM passages) AS passages, (SELECT COUNT(*) FROM announcements) AS announcements,"
-            " (SELECT COUNT(*) FROM market_observations) AS eod_rows, (SELECT COUNT(*) FROM security_master) AS security_master_rows"
+            " (SELECT COUNT(*) FROM market_observations) AS eod_rows, (SELECT COUNT(*) FROM security_master) AS security_master_rows,"
+            " (SELECT COUNT(*) FROM xbrl_filings WHERE parse_state='verified') AS xbrl_filings,"
+            " (SELECT COUNT(*) FROM xbrl_facts) AS xbrl_facts"
         )
         return {
             "status": "ok",
@@ -89,7 +93,9 @@ class App:
             manifest = json.loads(path.read_text())
             counts = manifest.get("counts") or {}
             return {"built_at": manifest.get("seed_built_at"), "documents": counts.get("document_versions"),
-                    "passages": counts.get("passages"), "source_commit": (manifest.get("source_commit") or "")[:7] or None}
+                    "passages": counts.get("passages"), "source_commit": (manifest.get("source_commit") or "")[:7] or None,
+                    **{key: manifest[key] for key in ("database_sha256", "working_tree") if key in manifest},
+                    **{key: counts[key] for key in ("xbrl_filings", "xbrl_facts") if key in counts}}
         except (OSError, ValueError, AttributeError):
             return None
 
@@ -145,6 +151,11 @@ class App:
         rows = self.store.query("SELECT * FROM fetch_attempts ORDER BY started_at DESC LIMIT 300")
         return {"attempts": rows}
 
+    def trust(self) -> Dict[str, Any]:
+        from .trust import build_trust_report
+        return build_trust_report(self.store, self.portfolio.get("symbols", []),
+                                  replay_cutoff=(self.replay.cutoff_utc if self.replay else None))
+
     # ------------------------------------------------------------ evidence
     def evidence(self, passage_id: str) -> Dict[str, Any]:
         p = self.store.query_one("SELECT * FROM passages WHERE passage_id=?", (passage_id,))
@@ -166,6 +177,52 @@ class App:
         return self._ver_public({**v, "identification": json.loads(v["identification"])})
 
     # ------------------------------------------------------------ quarterly results first cut (Push)
+    def financial_cards(self, symbol: str, mode: str = "replay", basis: str = "consolidated") -> Dict[str, Any]:
+        """Return stored exchange-XBRL cards; reads never trigger a network refresh."""
+        try:
+            company = nse.resolve_company(self.store, symbol)
+        except nse.IdentityError as exc:
+            raise NotFound(exc.state, str(exc)) from exc
+        cfg = self.replay if mode == "replay" else None
+        return xbrl.build_financial_cards(self.store, company, basis=basis,
+                                          cutoff_utc=cfg.cutoff_utc if cfg else None)
+
+    def refresh_financials(self, symbols: Optional[List[str]] = None, quarters: int = 8) -> Dict[str, Any]:
+        """Explicitly retrieve recent NSE integrated financial filings for known holdings."""
+        started_at = datetime.now(IST).isoformat(timespec="seconds")
+        chosen = [str(value).strip().upper() for value in (symbols or self.portfolio.get("symbols", []))]
+        if not chosen or len(chosen) > 15 or any(not value for value in chosen) or len(set(chosen)) != len(chosen):
+            raise ValueError("Choose 1 to 15 distinct portfolio symbols.")
+        if not 1 <= quarters <= 12:
+            raise ValueError("Choose between 1 and 12 quarters.")
+        if not self._xbrl_refresh_lock.acquire(blocking=False):
+            raise NotFound("refresh_running", "Exchange results are already being checked. Try again shortly.")
+        fetcher = self.fetcher_factory()
+        results = []
+        try:
+            for symbol in chosen:
+                started = time.monotonic()
+                try:
+                    company = nse.resolve_company(self.store, symbol, fetcher)
+                    row = xbrl.refresh_company(self.store, fetcher, company, quarters=quarters)
+                except nse.IdentityError as exc:
+                    row = {"symbol": symbol, "state": exc.state, "issue": str(exc), "stored": 0,
+                           "seconds": round(time.monotonic() - started, 2)}
+                except Exception as exc:  # keep a per-company gap, do not hide other portfolio results
+                    row = {"symbol": symbol, "state": "error", "issue": f"{exc.__class__.__name__}: {str(exc)[:200]}",
+                           "stored": 0, "seconds": round(time.monotonic() - started, 2)}
+                results.append(row)
+        finally:
+            fetcher.close()
+            self._xbrl_refresh_lock.release()
+        complete = sum(row.get("state") == "completed" for row in results)
+        return {"state": "completed" if complete == len(results) else "partial" if complete else "unavailable",
+                "started_at": started_at,
+                "finished_at": datetime.now(IST).isoformat(timespec="seconds"),
+                "companies": results, "summary": {"requested": len(results), "completed": complete,
+                "verified_filings": sum(row.get("stored", 0) for row in results),
+                "model_calls": 0, "model_cost_usd": 0}}
+
     def management_changes(self, symbol: str, mode: str = "replay") -> Dict[str, Any]:
         """Eligible appointment context, including clearly labelled pre-window filings."""
         company = self.company(symbol)
@@ -251,7 +308,8 @@ class App:
                     p = by_id[metric["evidence_id"]]
                     v = meta[p["version_id"]]
                     metric["source"] = {"version_id": p["version_id"], "page_index": p["page_index"],
-                                        "published_at": v.get("published_at"), "period_label": v.get("period_label")}
+                                        "published_at": v.get("published_at"), "period_label": v.get("period_label"),
+                                        "url": v.get("final_url") or v.get("source_url")}
                 source = checked["metrics"][0]["source"] if checked["metrics"] else saved.get("source")
                 return {**base, **checked, "available": bool(checked["metrics"]), "served": "cached",
                         "generation": saved.get("generation"), "source": source,
@@ -302,7 +360,8 @@ class App:
             p = by_id[metric["evidence_id"]]
             v = meta[p["version_id"]]
             metric["source"] = {"version_id": p["version_id"], "page_index": p["page_index"],
-                                "published_at": v.get("published_at"), "period_label": v.get("period_label")}
+                                "published_at": v.get("published_at"), "period_label": v.get("period_label"),
+                                        "url": v.get("final_url") or v.get("source_url")}
         first = selected[0]
         v = meta[first["version_id"]]
         source = computed["metrics"][0]["source"] if computed["metrics"] else {
@@ -618,12 +677,29 @@ class App:
             from .current import read_refresh_report
             current_report = read_refresh_report(self.settings) or {}
         current_rows = {r["symbol"]: r for r in current_report.get("companies", [])}
+        def filing_freshness(symbol):
+            row = current_rows.get(symbol, {})
+            state = row.get("state", "not_checked")
+            stamp = row.get("checked_at") if state == "fetched" else None
+            try:
+                age = int((end - datetime.fromisoformat(stamp)).total_seconds()) if stamp else None
+            except (ValueError, TypeError):
+                age = None
+            if state == "fetched" and (age is None or age < 0):
+                state, stamp, age = "not_checked", None, None
+            return {"state": state, "last_checked": stamp, "age_seconds": age,
+                    "error": row.get("error"), "announcements": row.get("announcements"),
+                    "note": row.get("error") or ("Exchange metadata checked." if state == "fetched" else "No verified current filing check.")}
+
         for symbol in self.portfolio.get("symbols", []):
             try:
                 c = nse.resolve_company(self.store, symbol)
             except nse.IdentityError:
-                companies.append({"symbol": symbol, "status": "unresolved",
-                                  "coverage": {"identity": False, "announcements": 0, "eod": 0, "documents": 0}})
+                unresolved = {"symbol": symbol, "status": "unresolved",
+                              "coverage": {"identity": False, "announcements": 0, "eod": 0, "documents": 0}}
+                if mode == "live":
+                    unresolved["freshness"] = filing_freshness(symbol)
+                companies.append(unresolved)
                 continue
             cid = c.company_id
             anns = announcements_in_window(self.store, cid, cfg)
@@ -651,7 +727,18 @@ class App:
                         "ref_category": cl["ref_category"], "reason": cl["reason"], "tier": cl["tier"],
                         "published_at": a.get("published_at"), "subject": a.get("subject"),
                         "attachment_version_id": a.get("attachment_version_id"),
-                        "attachment_url": a.get("attachment_url")}
+                        "attachment_url": a.get("attachment_url"), "source_url": a.get("source_url")}
+                financial_score = xbrl.scorecard_for_attachment(self.store, c, a.get("attachment_url"),
+                                                               cfg.cutoff_utc if cfg else None) if cl["ref_category"] == "results" else None
+                if financial_score:
+                    source = financial_score["source"]
+                    item["results_scorecard"] = {"basis": financial_score["basis"],
+                        "period_end": financial_score["period_end"], "metrics": [
+                            {"key": metric["key"], "label": metric["label"], "current": metric["current"],
+                             "qoq_pct": metric["qoq_pct"], "yoy_pct": metric["yoy_pct"]}
+                            for metric in financial_score["metrics"]],
+                        "xbrl_url": source.get("xbrl_url"), "pdf_url": source.get("pdf_url"),
+                        "xbrl_hash": source.get("xbrl_hash")}
                 if cl["tier"] == 1:
                     leading.append(item)
                 elif cl["tier"] == 2:
@@ -661,14 +748,8 @@ class App:
             anomaly = eod_anomaly(eod, pmp, vmul, base, min_base) if eod else None
 
             has_data = bool(anns or eod or docs)
-            current_row = current_rows.get(c.symbol, {})
-            current_ok = current_row.get("state") == "fetched"
-            stamp = current_row.get("checked_at") or current_report.get("finished_at")
-            if mode == "live" and stamp:
-                try:
-                    current_ok = current_ok and 0 <= (datetime.now(IST) - datetime.fromisoformat(stamp)).total_seconds() < SOURCE_REFRESH_CACHE_S
-                except (TypeError, ValueError):
-                    current_ok = False
+            freshness = filing_freshness(c.symbol)
+            current_ok = freshness["state"] == "fetched"
             if (has_data if mode == "replay" else current_ok):
                 checked += 1
             if leading or notable:
@@ -683,9 +764,9 @@ class App:
                 "routine_count": len(routine), "routine_events": routine,
                 "eod_anomaly": anomaly,
                 "can_research": bool(docs),
-                "freshness": {"state": "stale" if current_row.get("state") == "fetched" and not current_ok else current_row.get("state", "not_checked"),
-                              "last_checked": current_report.get("finished_at") if current_row else None,
-                              "note": current_row.get("error") or ("Exchange metadata checked; filing PDFs open at the original source." if current_ok else "Current filings have not been verified; stored sources do not establish a quiet period.")},
+                "freshness": freshness if mode == "live" else {
+                    "state": "not_checked", "last_checked": None,
+                    "note": "Current filings have not been verified; stored sources do not establish a quiet period."},
             })
         # Leading companies first, then by number of leading events.
         order = {"ok": 0, "no_data": 1, "unresolved": 2}
@@ -699,10 +780,32 @@ class App:
             "thresholds": {"price_move_pct": pmp, "volume_multiple": vmul,
                            "baseline_sessions": base, "min_baseline_sessions": min_base},
             "summary": {"companies": len(companies), "checked": checked,
-                        "with_events": with_events, "price_volume_flagged": flagged},
+                        "with_events": with_events, "price_volume_flagged": flagged,
+                        **({"unchecked": [{"symbol": row["symbol"], "state": row["freshness"]["state"], "error": row["freshness"]["error"]}
+                                          for row in companies if row["freshness"]["state"] != "fetched"],
+                            "last_full_check_at": current_report.get("last_full_check_at") or
+                            (current_report.get("finished_at") if checked == len(companies) else None)}
+                           if mode == "live" else {})},
             "companies": companies,
             "refresh": current_report or None,
         }
+
+    def current_digest(self) -> Dict[str, Any]:
+        from .digest import KEEP_DAYS, build_digest, read_digest, stamp
+        from .current import read_refresh_report
+
+        now = datetime.now(IST)
+        try:
+            saved = read_digest(self.settings.data_dir / "digest.json", now)
+        except (OSError, ValueError):
+            saved = None
+        report = read_refresh_report(self.settings) or {}
+        latest = stamp(report.get("finished_at"))
+        if saved:
+            generated = stamp(saved["generated_at"])
+            if now - generated <= timedelta(days=KEEP_DAYS) and (not latest or latest <= generated):
+                return saved
+        return build_digest(self.portfolio_queue(mode="live", window="7d"), previous=saved, now=now)
 
     # ------------------------------------------------------------ live EOD (free Yahoo chart API)
     def live_prices(self, price_move_pct: Optional[float] = None, volume_multiple: Optional[float] = None,

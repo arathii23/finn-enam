@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import type { EvidenceIndexEntry } from "./api";
 import { DOC_LABEL } from "./format";
 
-export function StateBox({ kind, title, children, action }: { kind: "loading" | "partial" | "error" | "empty"; title: string; children?: ReactNode; action?: ReactNode }) {
+export function StateBox({ kind, title, children, action }: { kind: "loading" | "partial" | "error" | "empty" | "info"; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className={`state state-${kind}`} role={kind === "error" ? "alert" : "status"} aria-live="polite">
       <div className="state-title">
         {kind === "loading" && <span className="spinner" aria-hidden="true" />}
-        <span className="state-tag">{{ loading: "Loading", partial: "Partial", error: "Failed", empty: "Empty" }[kind]}</span>
-        {title}
+        <span className="state-tag">{{ loading: "Loading", partial: "Partial", error: "Failed", empty: "Empty", info: "Info" }[kind]}</span>
+        <span>{title}</span>
       </div>
       {children && <div className="state-body">{children}</div>}
       {action}

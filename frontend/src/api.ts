@@ -10,6 +10,14 @@ export type Health = {
   corpus: Record<string, number>; frontend_built: boolean;
   capabilities?: { keyless_research: boolean; current_source_research: boolean; source_refresh: string };
 };
+export type TrustReport = {
+  generated_at: string;
+  replay_cutoff: string | null;
+  holdings: { symbol: string; annual_period: string | null; transcript_date: string | null; verified_roster: boolean | null;
+    results_quarter: string | null; last_filings_check: string | null; filings_check_state: string }[];
+  evaluation: { generated_at: string; scope: string; checks: Record<string, { passed: number; total: number; not_run?: number }>;
+    latency_ms: { p50: number | null; p95: number | null; samples: number }; model_cost_usd: number } | null;
+};
 export type Company = {
   company_id: string; symbol: string; legal_name: string; exchange: string; isin: string; series: string;
   listing_date: string | null; identity_source_url: string; identity_source_hash: string; resolved_at: string;
@@ -74,6 +82,7 @@ export type Evidence = {
 export type QueueEvent = {
   announcement_id: string; category: string | null; ref_category: string; reason: string; tier: number;
   published_at: string | null; subject: string | null; attachment_version_id: string | null; attachment_url: string | null;
+  results_scorecard?: { basis: string; period_end: string; metrics: { key: string; label: string; current: FinancialValue; qoq_pct: number | null; yoy_pct: number | null }[]; xbrl_url: string | null; pdf_url: string | null; xbrl_hash: string };
 };
 export type EodAnomaly = {
   trading_date: string; close: number | null; prev_close: number | null; volume: number | null;
@@ -85,14 +94,15 @@ export type QueueCompany = {
   coverage: { identity: boolean; announcements: number; eod: number; documents: number };
   leading_events?: QueueEvent[]; notable_events?: QueueEvent[]; routine_count?: number; routine_events?: QueueEvent[];
   eod_anomaly?: EodAnomaly | null; can_research?: boolean;
-  freshness?: { state: string; last_checked: string | null; note: string };
+  freshness?: { state: string; last_checked: string | null; note: string; error?: string | null; age_seconds?: number | null };
 };
 export type PortfolioRefresh = { state: string; checked: number; companies: { symbol: string; state: string; announcements?: number; error?: string }[]; finished_at: string; cached?: boolean };
 export type PortfolioQueue = {
   mode: string; replay: Replay | null;
   window: { preset: string; from: string | null; to: string; filing_from: string | null; filing_to: string; label: string; stored_only: boolean };
   thresholds: { price_move_pct: number; volume_multiple: number; baseline_sessions: number; min_baseline_sessions: number };
-  summary: { companies: number; checked: number; with_events: number; price_volume_flagged: number };
+  summary: { companies: number; checked: number; with_events: number; price_volume_flagged: number;
+    last_full_check_at?: string | null; unchecked?: { symbol: string; state: string; error?: string | null }[] };
   companies: QueueCompany[];
   refresh?: PortfolioRefresh | null;
 };
@@ -125,7 +135,7 @@ export type QMetric = {
   previous_quarter: { value_text: string; value: number } | null;
   year_ago_quarter: { value_text: string; value: number } | null;
   qoq_pct: number | null; yoy_pct: number | null;
-  source?: { version_id: string; page_index: number };
+  source?: { version_id: string; page_index: number; url?: string };
 };
 export type Quarterly = {
   symbol: string; legal_name: string; mode: string; available: boolean; served?: string; reason?: string;
@@ -145,6 +155,35 @@ export type ManagementChanges = {
     appointment_page_index: number; profile_page_index: number;
     announcement_id: string; version_id: string; published_at: string; in_review_window: boolean;
   }[];
+};
+
+export type FinancialBasis = "consolidated" | "standalone";
+export type FinancialValue = { value_raw: string; unit: string; value_crore: string | null };
+export type FinancialSource = {
+  filing_id: string; period_end: string; published_at: string; revision: string; basis: string;
+  xbrl_url: string; xbrl_hash: string; pdf_url: string | null;
+  concepts: { role: string; concept: string; namespace: string; raw_value: string; unit: string | null; decimals: string | null; period_start?: string | null; period_end?: string | null }[];
+};
+export type FinancialMetric = {
+  key: string; label: string; unit: string; current: FinancialValue;
+  previous?: { value: FinancialValue; published_at: string; url: string };
+  previous_quarter: FinancialValue | null; year_ago_quarter: FinancialValue | null;
+  qoq_pct: number | null; yoy_pct: number | null; qoq_period_end: string | null; yoy_period_end: string | null;
+  formula: string | null; derivation: { role: string; concept: string; value_raw: string; unit: string | null }[];
+  source: FinancialSource; comparative_sources: { previous_quarter: FinancialSource | null; year_ago_quarter: FinancialSource | null };
+};
+export type Financials = {
+  symbol: string; basis: string; mode: string; cutoff: string | null; available: boolean;
+  periods_by_basis?: Record<FinancialBasis, string | null>;
+  other_basis?: { name: "consolidated" | "standalone"; period_end: string | null };
+  scorecard: { available: boolean; period_end: string | null; period_label?: string; metrics: FinancialMetric[]; gaps: string[]; bank_taxonomy?: boolean };
+  cards: {
+    financial_snapshot: { items: { key: string; label: string; value: { value?: string; unit?: string; value_raw?: string; value_crore?: string | null } | null; formula: string | null; growth?: { qoq_pct: number | null; yoy_pct: number | null } | null; source: FinancialSource | null }[]; gaps: string[] };
+    balance_sheet: { items: { key: string; label: string; current?: FinancialValue | null; previous_march?: FinancialValue | null; tagged?: boolean; value?: string; unit?: string; formula?: string; source?: FinancialSource | null; previous_march_source?: FinancialSource | null }[]; as_of: string | null; comparison_period: string | null; gaps: string[] };
+    cash_quality: { period_end: string | null; period_start?: string | null; period_type: string | null; operating_cash_flow: FinancialValue | null; pat: FinancialValue | null; cash_conversion_pct: number | null; capex: FinancialValue | null; free_cash_flow: FinancialValue | null; free_cash_flow_formula?: string; sources?: { operating_cash_flow: FinancialSource | null; pat: FinancialSource | null; capex: FinancialSource | null }; gaps: string[] };
+    trajectory: { items: { period_end: string; revenue: FinancialValue | null; revenue_label?: string; ebitda_margin_pct: number | null; pat: FinancialValue | null; source: FinancialSource; annual?: { revenue: FinancialValue | null; pat: FinancialValue | null; ebitda_margin_pct: number | null; source: FinancialSource } | null }[]; gaps: string[] };
+  };
+  gaps: string[];
 };
 
 export type LivePriceCompany = {
@@ -205,11 +244,16 @@ const STATIC_RESEARCH = () => Promise.reject(new ApiError(0, "static_mode",
 
 const liveApi = {
   health: () => call<Health>("/api/health"),
+  trust: () => call<TrustReport>("/api/trust"),
   overview: (symbol: string, mode: ResearchMode = "replay") => call<Overview>(`/api/companies/${encodeURIComponent(symbol)}/overview?mode=${mode}`),
   narrative: (symbol: string, mode: ResearchMode = "replay") => call<Narrative>(`/api/companies/${encodeURIComponent(symbol)}/narrative?mode=${mode}`),
   quarterly: (symbol: string, mode: ResearchMode = "replay") => call<Quarterly>(`/api/companies/${encodeURIComponent(symbol)}/quarterly?mode=${mode}`),
   extractQuarterly: (symbol: string, mode: ResearchMode = "replay") => call<Quarterly>(`/api/companies/${encodeURIComponent(symbol)}/quarterly/extract?mode=${mode}`, { method: "POST" }),
   management: (symbol: string, mode: ResearchMode = "replay") => call<ManagementChanges>(`/api/companies/${encodeURIComponent(symbol)}/management?mode=${mode}`),
+  financials: (symbol: string, mode: ResearchMode = "replay", basis: FinancialBasis | "auto" = "auto") =>
+    call<Financials>(`/api/companies/${encodeURIComponent(symbol)}/financials?mode=${mode}&basis=${basis}`),
+  refreshFinancials: (symbol: string, quarters = 8) =>
+    call<Record<string, unknown>>(`/api/companies/${encodeURIComponent(symbol)}/financials/refresh?quarters=${quarters}`, { method: "POST" }),
   research: (body: { symbol: string; question?: string; event_id?: string; mode: ResearchMode; retry?: boolean }) =>
     call<{ job_id: string; reused: boolean }>("/api/research", { method: "POST", body: JSON.stringify(body) }),
   job: (id: string) => call<Job>(`/api/jobs/${encodeURIComponent(id)}`),
@@ -238,11 +282,15 @@ const liveApi = {
 const sym = (s: string) => encodeURIComponent(s.trim().toUpperCase());
 const staticApi: typeof liveApi = {
   health: () => snap<Health>("health.json"),
+  trust: () => snap<TrustReport>("trust.json"),
   overview: (s: string) => snap<Overview>(`overview_${sym(s)}.json`, true),
   narrative: (s: string) => snap<Narrative>(`narrative_${sym(s)}.json`, true),
   quarterly: (s: string) => snap<Quarterly>(`quarterly_${sym(s)}.json`),
   extractQuarterly: STATIC_RESEARCH as typeof liveApi.extractQuarterly,
   management: (s: string) => snap<ManagementChanges>(`management_${sym(s)}.json`, true),
+  financials: (s: string, mode: ResearchMode = "replay", basis: FinancialBasis | "auto" = "auto") =>
+    snap<Financials>(`financials_${mode}_${basis}_${sym(s)}.json`, true),
+  refreshFinancials: STATIC_RESEARCH as typeof liveApi.refreshFinancials,
   research: STATIC_RESEARCH as typeof liveApi.research,
   job: (id: string) => snap<Job>(`job_${encodeURIComponent(id)}.json`, true),
   savedResearch: (symbol?: string) => snap<{ items: SavedResearchItem[] }>(symbol ? `saved_${sym(symbol)}.json` : "saved.json")
@@ -257,7 +305,7 @@ const staticApi: typeof liveApi = {
     if (!url) return Promise.reject(new ApiError(0, "static_mode", "Live prices are not configured for this build."));
     // Cache-bust lightly so a viewer sees fresh data within the scheduler's cadence.
     return fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Math.floor(Date.now() / 60000)}`)
-      .then((r) => { if (!r.ok) throw new ApiError(r.status, "live_feed", r.status === 404 ? "The live feed is initialising — the scheduled refresh runs every few minutes." : `Live feed HTTP ${r.status}`); return r.json() as Promise<LivePrices>; })
+      .then((r) => { if (!r.ok) throw new ApiError(r.status, "live_feed", r.status === 404 ? "No market snapshot is currently available." : `Live feed HTTP ${r.status}`); return r.json() as Promise<LivePrices>; })
       .catch((e) => { if (e instanceof ApiError) throw e; throw new ApiError(0, "network", "The live price feed could not be reached."); });
   })) as typeof liveApi.livePrices,
   refreshPortfolio: STATIC_RESEARCH as typeof liveApi.refreshPortfolio,

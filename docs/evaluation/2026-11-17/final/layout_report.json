@@ -1,0 +1,137 @@
+{
+  "recorded_at": "2026-11-17T01:12:47.936038+00:00",
+  "browser": "157.0.8103.52",
+  "scope": "Local Chromium mobile viewport rehearsal. No physical-phone or PDF viewer timing.",
+  "results": [
+    {
+      "mode": "static",
+      "width": 360,
+      "result": "pass",
+      "digest_first_link_visible_ms": 556.0,
+      "checks": [
+        "digest",
+        "source link above 700px",
+        "44px target",
+        "seen and reload",
+        "partial coverage",
+        "26 h check age",
+        "revision returns",
+        "watermark stays",
+        "automatic basis",
+        "PDF and XBRL links",
+        "trust coverage",
+        "no overflow",
+        "snapshot miss",
+        "replay fallback",
+        "replay cutoff examples"
+      ]
+    },
+    {
+      "mode": "static",
+      "width": 390,
+      "result": "pass",
+      "digest_first_link_visible_ms": 207.1,
+      "checks": [
+        "digest",
+        "source link above 700px",
+        "44px target",
+        "seen and reload",
+        "partial coverage",
+        "26 h check age",
+        "revision returns",
+        "watermark stays",
+        "automatic basis",
+        "PDF and XBRL links",
+        "trust coverage",
+        "no overflow",
+        "snapshot miss",
+        "replay fallback",
+        "replay cutoff examples"
+      ]
+    },
+    {
+      "mode": "static",
+      "width": 430,
+      "result": "pass",
+      "digest_first_link_visible_ms": 173.0,
+      "checks": [
+        "digest",
+        "source link above 700px",
+        "44px target",
+        "seen and reload",
+        "partial coverage",
+        "26 h check age",
+        "revision returns",
+        "watermark stays",
+        "automatic basis",
+        "PDF and XBRL links",
+        "trust coverage",
+        "no overflow",
+        "snapshot miss",
+        "replay fallback",
+        "replay cutoff examples"
+      ]
+    },
+    {
+      "mode": "live",
+      "width": 360,
+      "result": "pass",
+      "digest_first_link_visible_ms": 178.6,
+      "checks": [
+        "digest",
+        "source link above 700px",
+        "44px target",
+        "seen and reload",
+        "partial coverage",
+        "26 h check age",
+        "revision returns",
+        "watermark stays",
+        "automatic basis",
+        "PDF and XBRL links",
+        "trust coverage",
+        "no overflow"
+      ]
+    },
+    {
+      "mode": "live",
+      "width": 390,
+      "result": "pass",
+      "digest_first_link_visible_ms": 180.2,
+      "checks": [
+        "digest",
+        "source link above 700px",
+        "44px target",
+        "seen and reload",
+        "partial coverage",
+        "26 h check age",
+        "revision returns",
+        "watermark stays",
+        "automatic basis",
+        "PDF and XBRL links",
+        "trust coverage",
+        "no overflow"
+      ]
+    },
+    {
+      "mode": "live",
+      "width": 430,
+      "result": "pass",
+      "digest_first_link_visible_ms": 177.6,
+      "checks": [
+        "digest",
+        "source link above 700px",
+        "44px target",
+        "seen and reload",
+        "partial coverage",
+        "26 h check age",
+        "revision returns",
+        "watermark stays",
+        "automatic basis",
+        "PDF and XBRL links",
+        "trust coverage",
+        "no overflow"
+      ]
+    }
+  ],
+  "passed": 6
+}

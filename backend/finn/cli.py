@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sqlite3
 import sys
+from datetime import datetime, timezone
+from dataclasses import replace
 
 from pathlib import Path
 
@@ -135,6 +138,128 @@ def cmd_live_prices(args) -> int:
     return 0
 
 
+def cmd_xbrl_refresh(args) -> int:
+    """Explicitly cache recent integrated-filing XBRL; this command never invokes an AI model."""
+    from .service import App
+    app = App(get_settings(), start_worker=False)
+    report = app.refresh_financials(args.symbols or None, args.quarters)
+    print(json.dumps(report, indent=2, default=str))
+    return 0 if report["state"] == "completed" else 2
+
+
+def cmd_alerts(args) -> int:
+    """Explicitly check current sources and send leading filing/EOD alerts to ntfy."""
+    from . import alerts
+    from .sources import nse
+    from .service import App
+
+    # Alerts are deterministic and remain model-free regardless of shell/.env keys.
+    s = replace(get_settings(), model_provider="keyless")
+    app = App(s, start_worker=False)
+    symbols = [x.upper() for x in (args.symbols or app.portfolio.get("symbols", []))]
+    if not symbols:
+        print("No portfolio symbols are configured.", file=sys.stderr)
+        return 2
+
+    # A clean GitHub runner has no local security-master cache. Resolve the public
+    # NSE master once before the bounded current filing check.
+    if not app.store.query_one("SELECT 1 FROM security_master LIMIT 1"):
+        fetcher = app.fetcher_factory()
+        try:
+            nse.refresh_security_master(app.store, fetcher)
+        finally:
+            fetcher.close()
+
+    from .current import refresh_portfolio_sources
+    refresh = refresh_portfolio_sources(app.store, s, symbols, app.fetcher_factory, args.days)
+    queue = app.portfolio_queue(mode="live", window="7d")
+    prices = json.loads(Path(args.prices).read_text()) if args.prices and Path(args.prices).is_file() else (
+        {} if args.prices else app.live_prices(symbols=symbols))
+    checked = {row["symbol"] for row in refresh.get("companies", []) if row.get("state") == "fetched"}
+    candidates = alerts.build_notifications(queue, prices, checked_symbols=checked,
+                                           extra_categories=alerts.categories_from_env(args.categories),
+                                           now=datetime.now(timezone.utc), days=args.days)
+    state_path = Path(args.state).expanduser() if args.state else s.data_dir / "alerts_state.json"
+    state = alerts.load_state(state_path)
+    pending = alerts.pending_notifications(candidates, state)
+    outcomes = {"sent": [], "failed": [], "filing_delay_seconds": []}
+
+    if args.dry_run:
+        print(json.dumps({"dry_run": True, "refresh": refresh, "candidates": pending,
+                          "pending": len(pending), "state_written": False}, indent=2, default=str))
+    else:
+        topic = args.topic or os.environ.get("NTFY_TOPIC", "")
+        next_state, outcomes = alerts.send_pending(pending, state, topic=topic)
+        alerts.save_state(state_path, next_state)
+        print(json.dumps({"dry_run": False, "refresh": refresh, "candidates": len(candidates),
+                          "sent": len(outcomes["sent"]), "failed": outcomes["failed"],
+                          "state_file": str(state_path)}, indent=2, default=str))
+
+    if args.status_out:
+        status = {"checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                  "refresh_state": refresh.get("state"), "holdings_checked": refresh.get("checked", 0),
+                  "holdings_total": len(refresh.get("companies", [])), "pending": len(pending),
+                  "sent": len(outcomes["sent"]), "failed": len(outcomes["failed"]),
+                  "filing_delay_seconds": outcomes["filing_delay_seconds"],
+                  "dry_run": bool(args.dry_run),
+                  "cadence_note": "GitHub's free scheduler is best-effort; checks may be minutes to hours apart."}
+        Path(args.status_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.status_out).write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+    return 2 if outcomes["failed"] else 0
+
+
+def cmd_digest(args) -> int:
+    import httpx
+    from .digest import build_digest, read_previous, write_atomic
+    from .service import App
+
+    previous = None
+    try:
+        if args.previous:
+            previous = read_previous(args.previous)
+        app = App(replace(get_settings(), model_provider="keyless"), start_worker=False)
+        app.refresh_current_portfolio(args.days)
+        digest = build_digest(app.portfolio_queue(mode="live", window="7d"), previous=previous)
+        if args.out:
+            write_atomic(Path(args.out), digest)
+    except (OSError, ValueError, httpx.HTTPError) as exc:
+        print(f"Digest failed: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps({"generated_at": digest["generated_at"], "checked": digest["checks"]["holdings_checked"],
+                      "items": len(digest["items"]), "model_calls": 0, "out": args.out}))
+    return 0 if digest["checks"]["holdings_checked"] else 2
+
+
+def cmd_eval(args) -> int:
+    from .evaluation import FrozenSeed, evaluate, write_report
+
+    report = evaluate(FrozenSeed(Path(args.db)), get_settings())
+    write_report(report, Path(args.out))
+    for name, check in report["checks"].items():
+        print(f"{name}: {check['passed']}/{check['total']} passed, {check.get('not_run', 0)} not run")
+    print(f"Report: {Path(args.out).resolve()}")
+    return 2 if any(check["failures"] for check in report["checks"].values()) else 0
+
+
+def cmd_calendar(args) -> int:
+    from .calendar_feed import refresh_calendar
+    from .sources.fetch import Fetcher
+
+    settings = get_settings()
+    symbols = json.loads(settings.portfolio_path.read_text())["symbols"]
+    store = Store(settings.db_path, settings.files_dir)
+    fetcher = Fetcher(store, max_bytes=min(2 * 1024 * 1024, settings.max_download_bytes))
+    try:
+        count = refresh_calendar(fetcher, symbols, Path(args.out), datetime.now(timezone.utc))
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    finally:
+        fetcher.close()
+    print(f"Wrote {count} upcoming NSE portfolio events to {args.out}")
+    return 0
+
+
 def cmd_serve(args) -> int:
     import uvicorn
     uvicorn.run("finn.api:get_app", factory=True, host=args.host, port=args.port, workers=1)
@@ -163,6 +288,33 @@ def main(argv=None) -> int:
     lp = sub.add_parser("live-prices", help="free live EOD snapshot via Yahoo (separate from replay)")
     lp.add_argument("symbols", nargs="*", help="NSE symbols (default: portfolio)")
     lp.set_defaults(fn=cmd_live_prices)
+    xf = sub.add_parser("xbrl-refresh", help="read NSE integrated financial-result XBRL (no model call)")
+    xf.add_argument("symbols", nargs="*", help="NSE symbols (default: all portfolio holdings)")
+    xf.add_argument("--quarters", type=int, default=8, help="recent quarter ends to retain per basis (1–12)")
+    xf.set_defaults(fn=cmd_xbrl_refresh)
+    al = sub.add_parser("alerts", help="dry-run or send deterministic current filing and EOD alerts to ntfy")
+    al.add_argument("symbols", nargs="*", help="NSE symbols (default: portfolio holdings)")
+    al.add_argument("--days", type=int, default=7, choices=range(1, 8), help="recent NSE filing window (1–7 days)")
+    al.add_argument("--categories", help="additional category slugs to include, comma-separated")
+    al.add_argument("--state", help="deduplication state JSON path")
+    al.add_argument("--status-out", help="optional latest-check summary JSON path")
+    al.add_argument("--prices", help="read EOD flags from a saved live_prices.json instead of fetching")
+    al.add_argument("--topic", help="ntfy topic (otherwise read NTFY_TOPIC from the environment)")
+    al.add_argument("--dry-run", action="store_true", help="list notifications without sending or updating state")
+    al.set_defaults(fn=cmd_alerts)
+    dg = sub.add_parser("digest", help="build a local, keyless subject-line portfolio digest")
+    dg.add_argument("--days", type=int, choices=[7], default=7)
+    dg.add_argument("--out", help="local JSON output path")
+    dg.add_argument("--previous", help="previous digest path or configured public feed URL")
+    dg.add_argument("--dry-run", action="store_true", help="run the same checks without any publication (this CLI only writes locally)")
+    dg.set_defaults(fn=cmd_digest)
+    ev = sub.add_parser("eval", help="evaluate keyless research on a checkpointed local seed")
+    ev.add_argument("--db", required=True, help="path to the frozen seed SQLite file (opened read-only)")
+    ev.add_argument("--out", required=True, help="directory to write eval_report.json and README.md")
+    ev.set_defaults(fn=cmd_eval)
+    calendar = sub.add_parser("calendar", help="build a local .ics file from NSE future events")
+    calendar.add_argument("--out", required=True, help="path to write finn-events.ics")
+    calendar.set_defaults(fn=cmd_calendar)
     srv = sub.add_parser("serve")
     srv.add_argument("--host", default="127.0.0.1")
     srv.add_argument("--port", type=int, default=8000)

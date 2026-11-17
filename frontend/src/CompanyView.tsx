@@ -7,13 +7,15 @@ import { ResearchComposer } from "./ResearchComposer";
 import { SavedResearch } from "./SavedResearch";
 import { liveAppUrl } from "./links";
 import { ResearchModePicker } from "./ResearchModePicker";
+import { FinancialsCard } from "./FinancialsCard";
 
-type Props = { symbol: string; mode: ResearchMode; onMode: (mode: ResearchMode) => void; initialQuestion?: string; initialEventId?: string; onResearch: (jobId: string) => void; onNarrative: () => void; onEvidence: (id: string, el: HTMLElement) => void };
+type Props = { symbol: string; mode: ResearchMode; onMode: (mode: ResearchMode) => void; latestResults?: boolean; initialQuestion?: string; initialEventId?: string; onResearch: (jobId: string) => void; onNarrative: () => void; onEvidence: (id: string, el: HTMLElement) => void };
 
-export function CompanyView({ symbol, mode, onMode, initialQuestion, initialEventId, onResearch, onNarrative, onEvidence }: Props) {
+export function CompanyView({ symbol, mode, onMode, latestResults, initialQuestion, initialEventId, onResearch, onNarrative, onEvidence }: Props) {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
+  const [financialsAvailable, setFinancialsAvailable] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -40,10 +42,11 @@ export function CompanyView({ symbol, mode, onMode, initialQuestion, initialEven
 
   if (error) {
     const unknown = error.state === "unknown_symbol";
+    const snapshotMiss = IS_STATIC && error.state === "not_in_snapshot";
     return (
-      <StateBox kind={unknown ? "empty" : "error"} title={unknown ? `Identity could not be resolved for “${symbol}”` : "Company could not be loaded"}
-        action={IS_STATIC && error.state === "not_in_snapshot" ? <a className="btn" href={liveAppUrl({ symbol, question: initialQuestion, eventId: initialEventId, mode: "live" })}>Find sources in live app ↗</a> : <button className="btn" onClick={load}>Retry</button>}>
-        {error.message}
+      <StateBox kind={snapshotMiss ? "info" : unknown ? "empty" : "error"} title={snapshotMiss ? "Not in this snapshot" : unknown ? `Identity could not be resolved for “${symbol}”` : "Company could not be loaded"}
+        action={snapshotMiss ? <a className="btn" href={liveAppUrl({ symbol, question: initialQuestion, eventId: initialEventId, mode: "live" })}>Open live app ↗ (may take about a minute to wake)</a> : <button className="btn" onClick={load}>Retry</button>}>
+        {snapshotMiss ? "The saved demo has no company view for this ticker. The live app can check the exchange for sources." : error.message}
       </StateBox>
     );
   }
@@ -86,7 +89,9 @@ export function CompanyView({ symbol, mode, onMode, initialQuestion, initialEven
       )}
 
       {hasNarrative && <ManagementCard symbol={symbol} mode={mode} onEvidence={onEvidence} />}
-      {hasNarrative && <QuarterlyCard symbol={symbol} mode={mode} onEvidence={onEvidence} />}
+      {latestResults && <p className="fine">Scorecard below uses the latest saved results. The research and documents on this page remain in the historical replay. <a href={`#/c/${encodeURIComponent(symbol)}`}>View replay scorecard</a></p>}
+      <FinancialsCard symbol={symbol} mode={latestResults ? "live" : mode} onAvailability={setFinancialsAvailable} />
+      {hasNarrative && !latestResults && <QuarterlyCard symbol={symbol} mode={mode} onEvidence={onEvidence} hideUnavailable={financialsAvailable} />}
 
       <Section title="Exchange announcements" aside={<Chip tone="muted">{announcements.length} in window</Chip>}>
         {announcements.length === 0 ? (
@@ -190,7 +195,7 @@ function pctText(v: number | null): string {
 // Quarterly first cut (Push): headline Revenue / EBITDA / PBT / PAT with QoQ & YoY from the
 // actual results filing. Model-extracted, then every figure verified verbatim against the filing;
 // anything that cannot be verified is omitted, not guessed.
-function QuarterlyCard({ symbol, mode, onEvidence }: { symbol: string; mode: ResearchMode; onEvidence: (id: string, el: HTMLElement) => void }) {
+function QuarterlyCard({ symbol, mode, onEvidence, hideUnavailable }: { symbol: string; mode: ResearchMode; hideUnavailable: boolean; onEvidence: (id: string, el: HTMLElement) => void }) {
   const [q, setQ] = useState<Quarterly | null>(null);
   const [err, setErr] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -212,6 +217,7 @@ function QuarterlyCard({ symbol, mode, onEvidence }: { symbol: string; mode: Res
 
   if (err) return <Section title="Quarterly first cut"><p className="muted">Results could not be loaded.</p><button className="btn btn-small" onClick={() => setAttempt(attempt + 1)}>Retry</button></Section>;
   if (!q) return <Section title="Quarterly first cut"><p className="muted">Reading the results filing…</p></Section>;
+  if (!q.available && hideUnavailable) return null;
   if (!q.available) {
     return (
       <Section title="Quarterly first cut" aside={<Chip tone="muted">not available</Chip>}>

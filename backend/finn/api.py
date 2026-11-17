@@ -62,6 +62,15 @@ def create_app(service: Optional[App] = None) -> FastAPI:
     def management(symbol: str, mode: str = Query("replay", pattern="^(replay|live)$")):
         return wrap(svc.management_changes, symbol, mode)
 
+    @api.get("/api/companies/{symbol}/financials")
+    def financials(symbol: str, mode: str = Query("replay", pattern="^(replay|live)$"),
+                   basis: str = Query("auto", pattern="^(auto|consolidated|standalone)$")):
+        return wrap(svc.financial_cards, symbol, mode, basis)
+
+    @api.post("/api/companies/{symbol}/financials/refresh")
+    def refresh_company_financials(symbol: str, quarters: int = Query(8, ge=1, le=12)):
+        return wrap(svc.refresh_financials, [symbol], quarters)
+
     @api.post("/api/research", status_code=202)
     def research(req: ResearchRequest):
         return wrap(svc.submit_research, req)
@@ -100,6 +109,14 @@ def create_app(service: Optional[App] = None) -> FastAPI:
     @api.get("/api/coverage")
     def coverage():
         return svc.coverage()
+
+    @api.get("/api/trust")
+    def trust():
+        return svc.trust()
+
+    @api.get("/api/digest")
+    def digest():
+        return wrap(svc.current_digest)
 
     @api.post("/api/portfolio/refresh")
     def refresh_portfolio(days: int = Query(7, ge=1, le=30)):

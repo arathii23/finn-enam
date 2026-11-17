@@ -1,0 +1,66 @@
+[
+  {
+    "path": "/api/health",
+    "status": 200,
+    "seed": {
+      "built_at": "2026-11-17T00:46:35.925398+00:00",
+      "documents": 84,
+      "passages": 27570,
+      "source_commit": "b13451d",
+      "database_sha256": "1757e58a6d844d94e52373d17460625340867f9e5adb8432bf8edbcedad0db6a",
+      "working_tree": true,
+      "xbrl_filings": 212,
+      "xbrl_facts": 34673
+    },
+    "corpus": {
+      "companies": 15,
+      "documents": 84,
+      "passages": 27570,
+      "announcements": 2019,
+      "eod_rows": 135,
+      "security_master_rows": 2620,
+      "xbrl_filings": 212,
+      "xbrl_facts": 34673
+    }
+  },
+  {
+    "path": "/snapshot/health.json",
+    "status": 200,
+    "seed": {
+      "built_at": "2026-11-17T00:46:35.925398+00:00",
+      "documents": 84,
+      "passages": 27570,
+      "source_commit": "b13451d",
+      "database_sha256": "1757e58a6d844d94e52373d17460625340867f9e5adb8432bf8edbcedad0db6a",
+      "working_tree": true,
+      "xbrl_filings": 212,
+      "xbrl_facts": 34673
+    },
+    "corpus": {
+      "companies": 15,
+      "documents": 84,
+      "passages": 27570,
+      "announcements": 2019,
+      "eod_rows": 135,
+      "security_master_rows": 2620,
+      "xbrl_filings": 212,
+      "xbrl_facts": 34673
+    }
+  },
+  {
+    "path": "/api/trust",
+    "status": 200
+  },
+  {
+    "path": "/api/digest",
+    "status": 200
+  },
+  {
+    "path": "/snapshot/trust.json",
+    "status": 200
+  },
+  {
+    "path": "/snapshot/financials_live_auto_CERA.json",
+    "status": 200
+  }
+]
