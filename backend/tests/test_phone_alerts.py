@@ -24,6 +24,7 @@ class MemoryStore:
     def __init__(self):
         self.rows, self.limits, self.locks = {}, {}, set()
         self.last_status = None
+        self.last_delivery_status = None
 
     def get(self, identity):
         return copy.deepcopy(self.rows.get(identity))
@@ -62,6 +63,12 @@ class MemoryStore:
 
     def save_status(self, value):
         self.last_status = copy.deepcopy(value)
+
+    def delivery_status(self):
+        return copy.deepcopy(self.last_delivery_status)
+
+    def save_delivery_status(self, value):
+        self.last_delivery_status = copy.deepcopy(value)
 
 
 @pytest.fixture
@@ -326,3 +333,42 @@ def test_idle_profiles_do_not_require_individual_storage_reads(phone, monkeypatc
     monkeypatch.setattr(store, 'get', lambda *_: pytest.fail('Idle profiles should not require per-user reads'))
     assert manager.deliver_tests()['queued'] == 0
     assert dispatch(manager, [])['sent'] == 0
+
+
+def test_timer_drains_tests_while_waiting_for_next_source_check(phone):
+    manager, store, calls = phone
+    manager.save(TOKEN_A, ['INFY'], ['results'], False, 'client')
+    manager.test(TOKEN_A)
+    store.last_status = {'checked_at': datetime.now(timezone.utc).isoformat()}
+    def unused():
+        pytest.fail('A recent source check must not be repeated')
+    result = manager.check(unused, unused)
+    assert result['tests']['sent'] == 1 and len(calls) == 1
+    assert 'skipped' in result['filings']
+    assert store.delivery_status() == result
+
+
+def test_timer_dry_run_does_not_consume_real_source_interval(phone):
+    manager, store, _ = phone
+    manager.check(lambda: {}, lambda: {}, dry_run=True)
+    assert 'filing-check-interval' not in store.limits
+    assert store.delivery_status() is None
+    manager.check(lambda: {}, lambda: {})
+    assert store.limits['filing-check-interval'] == 1
+
+
+def test_live_timer_requires_separate_job_credential_and_relay(env, phone):
+    settings, corpus, _, _ = env
+    manager, store, _ = phone
+    service = App(replace(settings, phone_job_token='job-secret', qstash_token=None), store=corpus, start_worker=False)
+    with TestClient(create_app(service, phone_manager=manager)) as client:
+        assert client.post('/api/phone/tick').status_code == 401
+        assert client.post('/api/phone/tick', headers={'Authorization': 'Bearer ' + TOKEN_A}).status_code == 401
+        assert client.post('/api/phone/tick', headers={'Authorization': 'Bearer job-secret'}).status_code == 503
+    service = App(replace(settings, phone_job_token='job-secret', qstash_token='relay-secret'), store=corpus, start_worker=False)
+    with TestClient(create_app(service, phone_manager=manager)) as client:
+        response = client.post('/api/phone/tick', headers={'Authorization': 'Bearer job-secret'})
+        assert response.status_code == 200
+        assert response.json()['dry_run'] is False
+        assert store.delivery_status()['checked_at']
+        assert client.get('/api/phone/catalog').json()['last_delivery_check']['checked_at']

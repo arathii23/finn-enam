@@ -51,6 +51,8 @@ class Settings:
     phone_redis_url: Optional[str] = None
     phone_redis_token: Optional[str] = None
     phone_job_token: Optional[str] = None
+    qstash_token: Optional[str] = None
+    qstash_url: str = "https://qstash.upstash.io"
 
     @property
     def db_path(self) -> Path:
@@ -103,6 +105,8 @@ def get_settings() -> Settings:
         phone_redis_url=os.environ.get("UPSTASH_REDIS_REST_URL") or None,
         phone_redis_token=os.environ.get("UPSTASH_REDIS_REST_TOKEN") or None,
         phone_job_token=os.environ.get("FINN_PHONE_ALERTS_JOB_TOKEN") or None,
+        qstash_token=os.environ.get("QSTASH_TOKEN") or None,
+        qstash_url=os.environ.get("QSTASH_URL", "https://qstash.upstash.io"),
         openai_api_key=os.environ.get("OPENAI_API_KEY") or None,
         openai_base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         # Model choice follows the pre-build specification section 6; it is configurable

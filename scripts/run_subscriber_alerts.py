@@ -11,7 +11,6 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -38,20 +37,16 @@ def main():
     store = RedisPhoneStore(settings.phone_redis_url, settings.phone_redis_token)
     manager = PhoneAlerts(store, [{'symbol': symbol, 'name': symbol} for symbol in companies])
     try:
-        tests = manager.deliver_tests(dry_run=args.dry_run)
-        last = store.status()
-        recent = last and (datetime.now(timezone.utc) - datetime.fromisoformat(last['checked_at'])).total_seconds() < 29 * 60
-        if args.scheduled and (recent or not store.allowance('filing-check-interval', 1, 29 * 60)):
-            print(json.dumps({'tests': tests, 'filings': 'next filing check is not due yet'}))
-            return 1 if tests['failed'] else 0
         with httpx.Client(timeout=120, follow_redirects=False) as client:
             def source(path, method='GET'):
                 response = client.request(method, args.base_url.rstrip('/') + path)
                 response.raise_for_status()
                 return response.json()
-            filings = manager.dispatch(lambda: source('/api/portfolio/refresh?days=7', 'POST'),
-                                       lambda: source('/api/portfolio?mode=live&window=7d'), dry_run=args.dry_run)
-        print(json.dumps({'tests': tests, 'filings': filings}, indent=2))
+            result = manager.check(lambda: source('/api/portfolio/refresh?days=7', 'POST'),
+                                   lambda: source('/api/portfolio?mode=live&window=7d'),
+                                   dry_run=args.dry_run, scheduled=args.scheduled)
+        tests, filings = result['tests'], result['filings']
+        print(json.dumps(result, indent=2))
         return 1 if tests['failed'] or filings.get('failed') or ('holdings_checked' in filings and not filings['holdings_checked']) else 0
     except (PhoneError, httpx.HTTPError, ValueError):
         print('The subscriber worker could not finish. Saved preferences and pending requests remain in Redis.')

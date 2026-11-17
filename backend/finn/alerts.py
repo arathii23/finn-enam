@@ -259,9 +259,13 @@ def send_pending(candidates: List[Dict[str, Any]], state: Dict[str, Any], *, top
     return {"schema": ALERT_STATE_SCHEMA, "sent": trimmed}, outcomes
 
 
+def ntfy_payload(topic: str, item: Dict[str, Any]) -> Dict[str, Any]:
+    return {"topic": topic, "title": item["title"], "message": item["body"],
+            "click": item.get("click_url") or item["company_url"]}
+
+
 def _send_ntfy(topic: str, item: Dict[str, Any]) -> None:
-    response = httpx.post("https://ntfy.sh", json={"topic": topic, "title": item["title"], "message": item["body"],
-                                                    "click": item.get("click_url") or item["company_url"]},
+    response = httpx.post("https://ntfy.sh", json=ntfy_payload(topic, item),
                           timeout=15.0, follow_redirects=False)
     response.raise_for_status()
 
