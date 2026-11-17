@@ -49,7 +49,10 @@ class QStashRelay:
                 for attempt in range(10):
                     response = client.get(self.url + '/v2/logs', params={'messageId': receipt['message_id'], 'count': 10}, headers=headers)
                     response.raise_for_status()
-                    logs = response.json().get('logs', [])
+                    data = response.json()
+                    # The regional REST service currently returns `events`, while
+                    # the published /v2/logs contract also documents `logs`.
+                    logs = data.get('logs', data.get('events', []))
                     states = {row.get('state') for row in logs if row.get('messageId') == receipt['message_id']}
                     if 'DELIVERED' in states:
                         receipt['delivered'] = True
