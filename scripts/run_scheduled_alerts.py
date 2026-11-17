@@ -52,25 +52,31 @@ def main(argv=None) -> int:
     parser.add_argument("--state", required=True)
     parser.add_argument("--out-state", required=True)
     parser.add_argument("--out-status", required=True)
-    parser.add_argument("--prices", required=True)
+    parser.add_argument("--prices")
+    parser.add_argument("--filings-only", action="store_true")
+    parser.add_argument("--since")
     parser.add_argument("--days", type=int, default=7, choices=range(1, 8))
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     parsed = urlparse(args.base_url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         parser.error("--base-url must be a public HTTPS URL")
+    try:
+        since = alerts.parse_start_at(args.since) if args.since is not None else None
+    except ValueError as exc:
+        parser.error(str(exc))
 
     # Wake a free Render instance first; repeat for its cold-start window.
     _request_json(args.base_url, "/api/health")
     query = urlencode({"days": args.days})
     refresh = _request_json(args.base_url, f"/api/portfolio/refresh?{query}", method="POST")
     queue = _request_json(args.base_url, "/api/portfolio?" + urlencode({"mode": "live", "window": "7d"}))
-    prices_path = Path(args.prices)
-    prices = json.loads(prices_path.read_text()) if prices_path.is_file() else {}
+    prices_path = Path(args.prices) if args.prices and not args.filings_only else None
+    prices = json.loads(prices_path.read_text()) if prices_path and prices_path.is_file() else {}
     checked = {row.get("symbol") for row in refresh.get("companies", []) if row.get("state") == "fetched"}
     candidates = alerts.build_notifications(queue, prices, checked_symbols=checked,
                                            extra_categories=alerts.categories_from_env(),
-                                           now=datetime.now(timezone.utc), days=args.days)
+                                           now=datetime.now(timezone.utc), days=args.days, since=since)
     state_path, out_state = Path(args.state), Path(args.out_state)
     state = alerts.load_state(state_path)
     pending = alerts.pending_notifications(candidates, state)

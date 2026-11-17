@@ -6,6 +6,7 @@ an AI model and never describes a price move as caused by a filing.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -75,20 +76,32 @@ def save_state(path: Path, state: Dict[str, Any]) -> None:
 def _is_nse_url(value: Any) -> bool:
     if not isinstance(value, str):
         return False
-    parsed = urlparse(value)
-    return parsed.scheme == "https" and parsed.hostname in NSE_HOSTS and not parsed.username and not parsed.password
+    try:
+        parsed = urlparse(value)
+        return (parsed.scheme == "https" and parsed.hostname in NSE_HOSTS and not parsed.username
+                and not parsed.password and parsed.port in (443, None))
+    except ValueError:
+        return False
 
 
 def _company_url(site_url: str, symbol: str) -> str:
-    return f"{site_url.rstrip('/')}/#/c/{quote(symbol, safe='')}?mode=live"
+    return f"{site_url.rstrip('/')}/#/c/{quote(symbol, safe='')}?results=latest"
+
+
+def _attachment_key(symbol: str, filing_url: str) -> str:
+    parsed = urlparse(filing_url)
+    # The two NSE archive families serve the same file paths.
+    mirror = (parsed.hostname or "").rsplit(".", 1)[0]
+    identity = f"{symbol}|{mirror}|{parsed.path}|{parsed.query}"
+    return f"attachment:{hashlib.sha256(identity.encode()).hexdigest()}"
 
 
 def _published(value: Optional[str]) -> str:
     if not value:
         return "Publication time not supplied by the source."
     try:
-        stamp = datetime.fromisoformat(value).astimezone(timezone.utc)
-        return "Published " + stamp.strftime("%d %b %Y %H:%M UTC") + "."
+        stamp = datetime.fromisoformat(value).astimezone(IST)
+        return "Published " + stamp.strftime("%d %b %Y %H:%M IST") + "."
     except (TypeError, ValueError):
         return "Publication time not supplied by the source."
 
@@ -97,7 +110,8 @@ def build_notifications(portfolio: Dict[str, Any], price_snapshot: Dict[str, Any
                         checked_symbols: Optional[Iterable[str]] = None,
                         extra_categories: Iterable[str] = (),
                         site_url: str = DEFAULT_SITE_URL,
-                        now: Optional[datetime] = None, days: int = 7) -> List[Dict[str, Any]]:
+                        now: Optional[datetime] = None, days: int = 7,
+                        since: Optional[datetime] = None) -> List[Dict[str, Any]]:
     """Build safe message candidates from FINN's existing Review and EOD read models."""
     checked = {str(s).upper() for s in checked_symbols} if checked_symbols is not None else None
     extras = {str(c).strip().lower() for c in extra_categories if str(c).strip()}
@@ -116,13 +130,16 @@ def build_notifications(portfolio: Dict[str, Any], price_snapshot: Dict[str, Any
         for event in events:
             if not isinstance(event, dict):
                 continue
-            if now is not None:
+            if now is not None or since is not None:
                 try:
                     published = datetime.fromisoformat(event.get("published_at") or "")
-                    age = (now.astimezone(IST).date() - published.astimezone(IST).date()).days
-                    if published.tzinfo is None or published > now or not 0 <= age < days:
+                    if published.tzinfo is None or (since is not None and published < since):
                         continue
-                except ValueError:
+                    if now is not None:
+                        age = (now.astimezone(IST).date() - published.astimezone(IST).date()).days
+                        if published > now or not 0 <= age < days:
+                            continue
+                except (TypeError, ValueError):
                     continue
             event_id = str(event.get("announcement_id") or "").strip()
             if not event_id or event_id in seen_ids:
@@ -132,19 +149,20 @@ def build_notifications(portfolio: Dict[str, Any], price_snapshot: Dict[str, Any
             label = _CATEGORY_LABELS.get(category, "Company filing")
             subject = re.sub(r"\s+", " ", str(event.get("subject") or event.get("category") or label)).strip()
             subject = subject[:240] + ("…" if len(subject) > 240 else "")
-            filing_url = event.get("attachment_url")
-            if not _is_nse_url(filing_url):
-                filing_url = event.get("source_url") if _is_nse_url(event.get("source_url")) else None
-            links = [f"Company: {_company_url(site_url, symbol)}"]
+            attachment = event.get("attachment_url")
+            filing_url = attachment if _is_nse_url(attachment) else None
+            company_url = _company_url(site_url, symbol)
+            links = [f"Company: {company_url}"]
             if filing_url:
                 links.append(f"Exchange filing: {filing_url}")
-            elif event.get("attachment_url"):
-                links.append("Exchange filing link was not an approved NSE URL.")
+            elif _is_nse_url(event.get("source_url")):
+                links.append(f"Exchange record: {event['source_url']}")
             body = "\n".join([subject, _published(event.get("published_at")), *links, ADVICE_FOOTER])
             out.append({"key": f"filing:{event_id}", "kind": "filing", "symbol": symbol,
                         "category": category, "title": f"{symbol} · {label}", "body": body,
                         "published_at": event.get("published_at"), "filing_url": filing_url,
-                        "company_url": _company_url(site_url, symbol)})
+                        "company_url": company_url, "click_url": filing_url or company_url,
+                        "dedupe_key": _attachment_key(symbol, filing_url) if filing_url else None})
 
     for company in price_snapshot.get("companies", []):
         if not isinstance(company, dict) or company.get("state") != "ok":
@@ -187,9 +205,12 @@ def pending_notifications(candidates: List[Dict[str, Any]], state: Dict[str, Any
     seen = set(state.get("sent", {}))
     pending = []
     for candidate in candidates:
-        if candidate["key"] not in seen:
+        keys = {candidate["key"]}
+        if candidate.get("dedupe_key"):
+            keys.add(candidate["dedupe_key"])
+        if not (keys & seen):
             pending.append(candidate)
-            seen.add(candidate["key"])
+            seen.update(keys)
     return pending
 
 
@@ -214,6 +235,8 @@ def send_pending(candidates: List[Dict[str, Any]], state: Dict[str, Any], *, top
             continue
         timestamp = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
         sent[item["key"]] = {"sent_at": timestamp.isoformat(timespec="seconds")}
+        if item.get("dedupe_key"):
+            sent[item["dedupe_key"]] = sent[item["key"]]
         if item["kind"] == "filing":
             try:
                 published = datetime.fromisoformat(item.get("published_at") or "")
@@ -238,9 +261,29 @@ def send_pending(candidates: List[Dict[str, Any]], state: Dict[str, Any], *, top
 
 def _send_ntfy(topic: str, item: Dict[str, Any]) -> None:
     response = httpx.post("https://ntfy.sh", json={"topic": topic, "title": item["title"], "message": item["body"],
-                                                    "click": item["company_url"]},
+                                                    "click": item.get("click_url") or item["company_url"]},
                           timeout=15.0, follow_redirects=False)
     response.raise_for_status()
+
+
+def send_test_notification(topic: str) -> bool:
+    """Send a single labelled test without opening the local data store."""
+    item = {"key": "test:phone", "kind": "test", "symbol": "FINN", "title": "FINN · Test alert",
+            "body": "Your phone received a test from FINN. Tap to open Portfolio Review.",
+            "company_url": DEFAULT_SITE_URL}
+    _, outcome = send_pending([item], empty_state(), topic=topic)
+    return bool(outcome["sent"])
+
+
+def parse_start_at(raw: str) -> datetime:
+    """Require a real timestamp with offset before enabling a live pilot."""
+    try:
+        stamp = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
+    except (AttributeError, ValueError) as exc:
+        raise ValueError("Set the alert start time to an ISO 8601 timestamp with an offset.") from exc
+    if stamp.tzinfo is None:
+        raise ValueError("The alert start time needs a timezone offset, such as Z or +05:30.")
+    return stamp
 
 
 def categories_from_env(value: Optional[str] = None) -> List[str]:
