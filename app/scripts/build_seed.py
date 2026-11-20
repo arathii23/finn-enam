@@ -6,10 +6,10 @@ documents a user would otherwise wait minutes for can instead ship inside the Do
 This tool reuses the SAME discovery code the live service runs (refresh mode, cutoff = now), against
 a COPY of the production database; the production store is never written.
 
-    python scripts/build_seed.py prepare  --out data/seed_build_YYYY_MM_DD
-    python scripts/build_seed.py discover --out ...            # real NSE access, keyless, no model
-    python scripts/build_seed.py verify   --out ...            # what changed, what did not
-    python scripts/build_seed.py pack     --out ...            # tarball + manifest (nothing published)
+    python app/scripts/build_seed.py prepare  --out data/seed_build_YYYY_MM_DD
+    python app/scripts/build_seed.py discover --out ...            # real NSE access, keyless, no model
+    python app/scripts/build_seed.py verify   --out ...            # what changed, what did not
+    python app/scripts/build_seed.py pack     --out ...            # tarball + manifest (nothing published)
 
 Publishing the tarball (a GitHub Release) is a separate, reviewed step.
 """
@@ -31,8 +31,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "backend"))
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "app" / "backend"))
 
 # Keyless and key-free regardless of the developer's shell or .env: this tool never calls a model.
 for _name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY",
@@ -56,7 +56,7 @@ QUESTION = "What guidance did management give for revenue growth and margins, an
 
 
 def portfolio_symbols() -> List[str]:
-    return json.loads((REPO / "manifests" / "portfolio.json").read_text())["symbols"]
+    return json.loads((REPO / "app" / "manifests" / "portfolio.json").read_text())["symbols"]
 
 
 def sha256_file(path: Path) -> str:

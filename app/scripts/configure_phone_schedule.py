@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'app' / 'backend'))
 from finn.config import get_settings
 from finn.notification_relay import QStashRelay
 

@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: app/backend
     env:
       FINN_MODEL_PROVIDER: keyless
     steps:

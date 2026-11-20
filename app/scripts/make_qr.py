@@ -4,7 +4,7 @@
 Pure-Python (segno); no cloud service, no account, no cost. Run it after you know the
 deployed HTTPS URL:
 
-    python scripts/make_qr.py https://your-finn-demo.pages.dev --out docs/share
+    python app/scripts/make_qr.py https://your-finn-demo.pages.dev --out docs/share
 
 Writes <out>/finn_qr.png, <out>/finn_qr.svg and <out>/finn_share_card.html (open the
 HTML and print to PDF for a one-page phone-sharing handout).

@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Fetch live prices (stdlib only)
-        run: python scripts/refresh_live_prices.py --out live_prices.json
+        run: python app/scripts/refresh_live_prices.py --out live_prices.json
       - name: Publish to live-data branch
         run: |
           set -euo pipefail

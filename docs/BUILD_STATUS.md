@@ -1,6 +1,10 @@
 # FINN build status
 
-Updated 4 November 2026 (IST). **FINN has been submitted to ENAM. The post-submission improvements are now published to the existing destinations and verified from the public network: source `main` and the Render app (https://finn-mow9.onrender.com, keyless), and the GitHub Pages demo (https://arathii23.github.io/finn-enam/).** 216 backend tests pass; live and static builds pass. A physical-phone check and real-key Groq/OpenRouter/Gemini quality remain pending. No new email was sent and no charge, account or provider key was used. Earlier dated entries describe their own checkpoints.
+Updated 21 November 2026 (IST). The recruiter-facing README now leads with the main app, a verified QR code and the live research link. Code, manifests and scripts are grouped under `app/`; supporting material is under `docs/`. All 272 backend tests and both frontend builds passed after relocation. The QR image decoded to the public app URL. Existing deployment and workflow paths were updated together.
+
+The 18 November automatic alert check delivered a queued test, checked 15/15 NSE companies and reported no failures. The owner then confirmed receiving the test on an iPhone and enabling alerts. The app remains keyless by default. Displayed source timestamps and service limits still apply; no streaming intraday-price claim is made.
+
+Earlier dated checkpoints below retain their historical scope.
 
 ## 4 November 2026 (evening) — larger seed corpus built and published (Claude Code)
 

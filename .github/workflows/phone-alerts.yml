@@ -28,13 +28,13 @@ jobs:
       contents: read
     env:
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-      PYTHONPATH: backend
+      PYTHONPATH: app/backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install -r backend/requirements.txt
+      - run: python -m pip install -r app/backend/requirements.txt
       - name: Send one phone test
         run: python -m finn alerts --test
 
@@ -51,14 +51,14 @@ jobs:
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
       FINN_BASE_URL: ${{ vars.FINN_BASE_URL || 'https://finn-mow9.onrender.com' }}
       FINN_MODEL_PROVIDER: keyless
-      PYTHONPATH: backend
+      PYTHONPATH: app/backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install the existing source-check dependencies
-        run: python -m pip install -r backend/requirements.txt
+        run: python -m pip install -r app/backend/requirements.txt
       - name: Restore public live-data state
         shell: bash
         run: |
@@ -69,7 +69,7 @@ jobs:
       - name: Probe current NSE announcement access from this runner
         id: nse_probe
         continue-on-error: true
-        run: timeout 90 python scripts/probe_nse_runner.py
+        run: timeout 90 python app/scripts/probe_nse_runner.py
       - name: Resolve dry-run setting
         id: mode
         shell: bash
@@ -106,7 +106,7 @@ jobs:
           args=(--base-url "$FINN_BASE_URL" --days 7 --filings-only --state _state/alerts_state.json --out-state _state/alerts_state.json --out-status _state/alerts_status.json)
           if [ -n "$FINN_ALERTS_START_AT" ]; then args+=(--since "$FINN_ALERTS_START_AT"); fi
           if [ "${{ steps.mode.outputs.dry_run }}" = "true" ]; then args+=(--dry-run); fi
-          python scripts/run_scheduled_alerts.py "${args[@]}"
+          python app/scripts/run_scheduled_alerts.py "${args[@]}"
       - name: Publish alert state and last-check time to live-data
         if: always() && steps.mode.outputs.dry_run == 'false' && hashFiles('_state/alerts_status.json') != ''
         shell: bash

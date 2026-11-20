@@ -84,7 +84,7 @@ is left in place by this change; it is simply not used while the provider is `ke
 ## Larger seed corpus (built and published on 4 November 2026; hosted results below)
 
 Because the free instance forgets what it discovers, the practical fix is to ship more verified
-documents inside the image's seed. `scripts/build_seed.py` builds one from an isolated copy of the
+documents inside the image's seed. `app/scripts/build_seed.py` builds one from an isolated copy of the
 production store, using the same discovery code the live service runs (refresh mode, cutoff = now,
 keyless, no model). Stages: `prepare`, `discover`, `verify`, `pack`. The production database was
 never written (its SHA-256 was identical before and after).

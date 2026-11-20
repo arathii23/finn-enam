@@ -1,7 +1,7 @@
 .venv/
 data/
-frontend/node_modules/
-frontend/dist/
+app/frontend/node_modules
+app/frontend/dist/
 __pycache__/
 .pytest_cache/
 .env
@@ -10,6 +10,9 @@ __pycache__/
 tmp/
 _to_delete/
 
-# Derived build artifacts (regenerate: finn export-static / scripts/make_qr.py)
-frontend/public/snapshot/
+# Derived build artifacts (regenerate: finn export-static / app/scripts/make_qr.py)
+app/frontend/public/snapshot/
 docs/share/
+
+# Local submission exports stay private.
+output/

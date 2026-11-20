@@ -21,25 +21,25 @@ model API, and the evaluator needs no key of their own.
 From the repo root, selecting keyless mode so the snapshot makes no model calls:
 
 ```bash
-cd backend && env FINN_MODEL_PROVIDER=keyless \
-  ../.venv/bin/python -m finn export-static
+cd app/backend && env FINN_MODEL_PROVIDER=keyless \
+  ../../.venv/bin/python -m finn export-static
 ```
 
 ```bash
 cd ../frontend && VITE_STATIC=1 npm run build
 ```
 
-`frontend/dist/` is now a self-contained static site (~2.5 MB). It contains the app plus
+`app/frontend/dist/` is now a self-contained static site (~2.5 MB). It contains the app plus
 `dist/snapshot/*.json` — the exported read models. No server, no database, no backend.
 
 ## 2. Publish it on a free CDN (never sleeps)
 
 Pick one. All are free and serve over HTTPS.
 
-- **Cloudflare Pages** — drag `frontend/dist/` onto the dashboard ("Upload assets"), or
-  `npx wrangler pages deploy frontend/dist`. Per-asset limit 25 MiB (our largest file is tiny).
-- **Netlify** — drag `frontend/dist/` onto app.netlify.com/drop, or `netlify deploy --dir=frontend/dist --prod`.
-- **GitHub Pages** — commit `frontend/dist/` (or publish it from an action) and enable Pages.
+- **Cloudflare Pages** — drag `app/frontend/dist/` onto the dashboard ("Upload assets"), or
+  `npx wrangler pages deploy app/frontend/dist`. Per-asset limit 25 MiB (our largest file is tiny).
+- **Netlify** — drag `app/frontend/dist/` onto app.netlify.com/drop, or `netlify deploy --dir=app/frontend/dist --prod`.
+- **GitHub Pages** — commit `app/frontend/dist/` (or publish it from an action) and enable Pages.
   If served from a sub-path, build with `vite build --base=/<repo>/` so asset URLs resolve.
 
 You get an HTTPS URL like `https://finn-demo.pages.dev`. Open it on any phone — no install,
@@ -48,7 +48,7 @@ no login.
 ## 3. Make the QR code + share card
 
 ```bash
-python scripts/make_qr.py https://YOUR-URL --out docs/share
+python app/scripts/make_qr.py https://YOUR-URL --out docs/share
 ```
 
 Writes `finn_qr.png`, `finn_qr.svg` and `finn_share_card.html` (open and print to PDF for a
@@ -65,8 +65,8 @@ for arbitrary tickers.
 **Run it locally (free, no sleep while your machine is on):**
 
 ```bash
-cd frontend && npm run build          # live build (no VITE_STATIC)
-cd ../backend && ../.venv/bin/python -m finn serve --host 0.0.0.0 --port 8000
+cd app/frontend && npm run build          # live build (no VITE_STATIC)
+cd ../backend && ../../.venv/bin/python -m finn serve --host 0.0.0.0 --port 8000
 ```
 
 Open `http://<your-lan-ip>:8000` on a phone on the same Wi-Fi. For keyless operation select
@@ -74,7 +74,7 @@ Open `http://<your-lan-ip>:8000` on a phone on the same Wi-Fi. For keyless opera
 `FREE_RESOURCES.md`. A Gemini example:
 
 ```bash
-FINN_MODEL_PROVIDER=gemini GEMINI_API_KEY=your-free-key ../.venv/bin/python -m finn serve --port 8000
+FINN_MODEL_PROVIDER=gemini GEMINI_API_KEY=your-free-key ../../.venv/bin/python -m finn serve --port 8000
 ```
 
 **Deploy it (free tier, but sleeps):** the `Dockerfile` + `render.yaml` blueprint deploy one
@@ -100,7 +100,7 @@ The post-submission changes are prepared locally. Deploy the backend first and c
 check and source brief. Publish the static bundle second, with the existing GitHub Pages base:
 
 ```bash
-cd frontend
+cd app/frontend
 VITE_STATIC=1 \
 VITE_LIVE_APP_URL=https://finn-mow9.onrender.com \
 VITE_LIVE_PRICES_URL=https://raw.githubusercontent.com/arathii23/finn-enam/live-data/live_prices.json \
@@ -122,10 +122,10 @@ notes retain their original primary-source URLs and evidence locators.
 
   ```bash
   env FINN_MODEL_PROVIDER=keyless OPENAI_API_KEY='' ANTHROPIC_API_KEY='' GEMINI_API_KEY='' \
-    GROQ_API_KEY='' OPENROUTER_API_KEY='' PYTHONPATH=backend .venv/bin/python -m finn export-static
-  cd frontend && VITE_STATIC=1 VITE_LIVE_APP_URL=https://finn-mow9.onrender.com \
+    GROQ_API_KEY='' OPENROUTER_API_KEY='' PYTHONPATH=app/backend .venv/bin/python -m finn export-static
+  cd app/frontend && VITE_STATIC=1 VITE_LIVE_APP_URL=https://finn-mow9.onrender.com \
     VITE_LIVE_PRICES_URL=https://raw.githubusercontent.com/arathii23/finn-enam/live-data/live_prices.json \
-    npm run build -- --base=/finn-enam/ --outDir ../tmp/finn-pages-release
+    npm run build -- --base=/finn-enam/ --outDir ../../tmp/finn-pages-release
   ```
 
   The production seed is `data/finn.sqlite3`. Never publish a QA database, `.env`, notebook exports
