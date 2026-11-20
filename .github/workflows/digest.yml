@@ -12,12 +12,12 @@ jobs:
     timeout-minutes: 5
     env:
       FINN_MODEL_PROVIDER: keyless
-      PYTHONPATH: backend
+      PYTHONPATH: app/backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install -r backend/requirements.txt
+      - run: python -m pip install -r app/backend/requirements.txt
       - name: Probe NSE from this runner
-        run: python scripts/probe_nse_runner.py
+        run: python app/scripts/probe_nse_runner.py

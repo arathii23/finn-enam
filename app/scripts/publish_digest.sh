@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Owner-operated. The default action validates local data without contacting GitHub.
 set -euo pipefail
-repo=$(cd "$(dirname "$0")/.." && pwd)
-digest=${1:?Usage: scripts/publish_digest.sh DIGEST_JSON [--publish]}
+repo=$(cd "$(dirname "$0")/../.." && pwd)
+digest=${1:?Usage: app/scripts/publish_digest.sh DIGEST_JSON [--publish]}
 mode=${2:---validate}
 if [[ "$mode" != "--validate" && "$mode" != "--publish" ]] || [[ $# -gt 2 ]]; then
   echo "Use --validate or --publish." >&2
   exit 2
 fi
 digest=$(cd "$(dirname "$digest")" && pwd)/$(basename "$digest")
-PYTHONPATH="$repo/backend" "${FINN_PYTHON:-$repo/.venv/bin/python}" - "$digest" <<'PY'
+PYTHONPATH="$repo/app/backend" "${FINN_PYTHON:-$repo/.venv/bin/python}" - "$digest" <<'PY'
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys

@@ -1,6 +1,11 @@
 .venv
 data
-frontend/node_modules
-frontend/dist
+app/frontend/node_modules
+app/frontend/dist
 **/__pycache__
 **/.pytest_cache
+
+.git
+.env
+output
+tmp

@@ -1,124 +1,65 @@
-# FINN — primary-source investor research
+# FINN - primary-source investor research
 
-FINN combines a prioritised 15-company review queue with primary-source company research, a
-guidance-versus-outcome comparison, quarterly headline tables and appointment profiles. Claims
-link to the exact evidence passage and PDF page. The historical demo has an evidence cutoff of
-30 April 2025. The live app also offers explicit current-filing checks and current-source
-research; each check shows its actual dates, coverage and failures.
+A mobile-first workflow for following Indian listed companies: notice a filing, inspect its source, ask a focused question, and save what matters.
 
-**4 November practical-use update:** company-name search, current exchange-filing checks,
-current-source questions, a private browser notebook for cited points and follow-ups, Markdown
-export, and direct static-demo-to-live research links. Optional Groq and free-only OpenRouter
-adapters join Gemini. Read [the verified change record](docs/POST_SUBMISSION_IMPROVEMENTS.md)
-and [free-resource setup](docs/FREE_RESOURCES.md).
+### [Open the main app](https://arathii23.github.io/finn-enam/)
 
-Requirements: `1. ENAM_AI_Engineer_Build_Challenge_Main.pdf`, `2. ENAM_AI_Engineer_Build_Challenge_Reference.pdf`. Scope decisions: `FINN_Prebuild_Specification.md`. Current state and test evidence: **`BUILD_STATUS.md`**.
+[Live research app](https://finn-mow9.onrender.com) · [Phone alerts](https://arathii23.github.io/finn-enam/#/alerts) · [Source and verification notes](docs/README.md)
 
-## Run it (macOS/Linux, internet required for ingestion)
+<a href="https://arathii23.github.io/finn-enam/">
+  <img src="docs/assets/finn-qr.png" alt="Scan to open the FINN main app on your phone" width="222" height="222">
+</a>
 
-```bash
-cd ENAM_Holdings
-bash scripts/m1_verify.sh          # venv + deps, tests, Vite build, INFY ingestion, checks, startup smoke
-. .venv/bin/activate && cd backend
-python -m finn serve               # http://127.0.0.1:8000
-python -m finn serve --host 0.0.0.0  # to open from a phone on the same Wi-Fi: http://<mac-LAN-IP>:8000
+**Scan with your phone camera, or use the app link above.** The web app opens without a login. Optional phone notifications use the free ntfy app.
+
+## Try it in a minute
+
+1. **Review:** open a filing from the 15-company portfolio and inspect the original exchange source. Use "Since your last visit" to resume your review.
+2. **Research:** open a company or saved brief, ask a focused question in the live app, and follow the evidence to its passage and PDF page.
+3. **Results:** inspect the quarter, standalone/consolidated basis, calculations, revisions and source links.
+4. **Alerts:** choose companies and filing types, connect ntfy, receive a test and enable personal notifications.
+
+## What I built
+
+| Investor task | FINN's workflow |
+| --- | --- |
+| Keep up with holdings | Recent-filings digest, company/type filters, priority tiers and source-check coverage |
+| Check a claim | Annual reports, earnings-call transcripts and exchange filings with exact citations and visible gaps |
+| Understand results | Quarterly comparisons, labelled derived figures, bank-specific metrics and PDF/XBRL discrepancy checks |
+| Follow relevant updates | Personal company/type alerts, durable preferences, pause/resume, recovery and deletion |
+| Return to research | Browser-local cited notebook, notes, follow-up status and Markdown export |
+| Inspect reliability | Source dates, publication-cutoff rules, Trust view and dated verification records |
+
+The public deployment is **keyless by default**. Code selects relevant source quotations, ranks filings and performs arithmetic. Optional model providers are configured on the server; a reviewer needs no API key.
+
+**Repository checks (21 November 2026):** 272 backend tests passed; live and Pages production builds passed; the QR image decoded to the main-app URL.
+
+## Data freshness and scope
+
+The main app includes published snapshots and feeds; its dates and coverage show what was actually checked. The live research app supports explicit current-source checks. Historical replay is separate and retains its **30 April 2025** evidence cutoff.
+
+Phone test requests are checked about every five minutes and filing checks are due about every thirty minutes. Free hosting, source failures and service limits can delay updates. Price data is an end-of-day snapshot, not a streaming intraday feed.
+
+## Explore the repository
+
+The project is grouped into **two main folders**, plus GitHub's workflow folder:
+
+```text
+app/
+  backend/       Python / FastAPI, source retrieval, research and tests
+  frontend/      React / TypeScript mobile interface
+  manifests/     Portfolio and historical replay metadata
+  scripts/       Verification, snapshots, data publishing and alert tools
+docs/
+  README.md      Guide to the documentation
+  DEVELOPMENT.md Local setup, checks and architecture
+  assets/        Main-app QR code
+  assignment/    Original challenge briefs
+  planning/      Feasibility review, specification and source-access audit
+.github/
+  workflows/     Automated checks and data jobs
 ```
 
-**Keyless by default.** When `FINN_MODEL_PROVIDER` is unset or `keyless`, FINN makes no model
-calls, even if old credentials exist in the environment. An explicitly configured provider
-overrides that default. Without model generation, the following still work:
-the Push digest, saved research briefs, quarterly tables, management cards, narrative-vs-numbers
-and — for a fresh question — a **verbatim extractive source brief** that quotes the sentences most
-relevant to your question from the primary sources and cites each one (`backend/finn/brief.py`).
-Figures are quoted, never computed; nothing is filled from model memory. This is the shipped
-submission configuration, so the evaluator needs no key.
+[Run it locally](docs/DEVELOPMENT.md) · [Phone-alert setup and evidence](docs/PHONE_ALERTS_PILOT.md) · [Results verification](docs/FINN_V2_VERIFICATION.md) · [Build checkpoints](docs/BUILD_STATUS.md)
 
-**Optional genuine AI synthesis, also free.** Get a free Google AI Studio key
-(https://aistudio.google.com/apikey — no billing) and set `FINN_MODEL_PROVIDER=gemini` with
-`GEMINI_API_KEY=...` in a local `.env`. On-demand research then runs through `gemini-2.5-flash` at
-zero per-token cost, through the same citation/number/speaker validation gates; a free-tier rate
-limit degrades gracefully to the keyless source brief. Paid providers (`anthropic`, `openai`)
-remain selectable but are never required. See `.env.example`. Budget ceilings: **$5 total, $0.25
-per job** (list-price reservations; the free tier reserves $0).
-
-**Other optional providers:** select `groq` with a server-side `GROQ_API_KEY` on a Free-plan
-account, or `openrouter` with `OPENROUTER_API_KEY`. OpenRouter routing is restricted to
-`openrouter/free` / explicit `:free` models and zero-price provider routes. Provider limits and
-eligibility remain account-specific; neither new adapter has been tested with a real key.
-Failures return the source brief. No key belongs in the browser or a `VITE_*` variable.
-
-**Put it on a phone — free, no sleep.** Build a static snapshot and publish it to any free CDN,
-plus a QR code. See **`docs/DEPLOY_FREE.md`**.
-
-Individual commands (from `backend/`): `python -m finn check-runtime` · `python -m finn ingest INFY` · `python -m finn verify --symbol INFY` · `python -m pytest -q tests` · `python tests/ui_check.py ../frontend/dist /tmp/ui` (Playwright UI check). Frontend dev server: `cd frontend && npm install && npm run dev` (proxies `/api` to :8000).
-
-
-## Two workflows (mobile)
-
-- **Review (Push):** `#/` — a prioritised digest across the 15-company portfolio (`manifests/portfolio.json`).
-  Leading/notable/routine tiers from a deterministic classifier (`backend/finn/prioritize.py`), collapsed
-  routine filings, configurable EOD price/volume anomaly flags, and event → research links. Holdings with no
-  ingested data are shown honestly as "not yet ingested". An optional **Live market snapshot** card pulls
-  free real-time EOD from Yahoo Finance (no key) and applies the same anomaly flags — clearly separated from
-  the verified replay (`backend/finn/sources/live_eod.py`, `GET /api/live-prices`, `python -m finn live-prices`).
-- **Research (Pull):** `#/research` or any `#/c/<SYMBOL>` — primary-source company research with per-claim
-  evidence you can open at the exact PDF page.
-- **Current sources:** choose Current filings in Review, then **Check latest filings**, to fetch
-  the last seven IST calendar dates of exchange metadata for the portfolio. Current-source company
-  research separately checks annual reports/transcripts and reads a deliberately selected filing.
-  Opening a page is read-only. Checks are bounded and reused for 15 minutes; a failed check retains
-  older sources with its gap disclosed. This is an on-demand check, not notification delivery.
-- **Notebook:** `#/notebook` — save a cited point, exact quote or question, add your own note,
-  mark it followed up, and export Markdown with source URLs, pages and hashes. Stored only in the
-  current browser/origin; it does not sync between GitHub Pages and the live backend.
-- **Numbers vs Narrative:** `#/c/INFY/narrative` — deterministic guidance/outcome comparisons with
-  metric, year, entity and currency-basis gates; unmatched outcomes remain pending.
-- **Company context:** `#/c/INFY` has a saved quarterly table; `#/c/HDFCBANK` and `#/c/CERA` have
-  source-quoted management profiles with separate appointment/profile evidence. These two filings
-  predate the digest window and are labelled accordingly.
-
-Populate the full portfolio on a networked machine:
-```bash
-cd backend && python -m finn ingest HCLTECH RELIANCE ICICIBANK BHARTIARTL LT MARUTI HINDUNILVR SUNPHARMA ULTRACEMCO TITAN TRENT ASTRAL
-```
-All 15 holdings are populated in the current local database. Rebuild the UI with
-`cd frontend && npm install && npm run build`. Data and source PDFs are git-ignored: a fresh checkout
-needs ingestion or an intentionally seeded copy of `data/`. Saved research can be read without a
-model call; fresh questions return source extracts without a model, while optional synthesis
-requires an explicitly selected provider. See `BUILD_STATUS.md` for verified coverage.
-
-
-## Architecture
-
-```
-NSE EQUITY_L.csv ─┐
-NSE daily files ──┼─> guarded fetcher (https-only, size cap, byte validation, every attempt logged)
-NSE announcements ┤        │
-AR / transcripts ─┘        v
-              content-addressed files (sha256) + SQLite metadata + FTS5 passages (PDF page index, speaker)
-                           │
-              replay cutoff filter (proven exchange publication time ≤ cutoff)  ← before retrieval
-                           │
-              bounded retrieval (AR context / transcript commentary / event filing, separately)
-                           │
-     keyless: verbatim extractive source brief (brief.py)   ─OR─   optional model (Gemini free /
-              Anthropic / OpenAI, JSON schema) → citation + number + speaker validation
-                           │
-              FastAPI (same origin) ── React/Vite mobile UI: company/event → research → evidence sheet → PDF
-                           │
-              static export (snapshot.py) ──> CDN-hosted read-only snapshot (no backend, never sleeps)
-```
-
-- `backend/finn/sources/` — `fetch.py` (guarded retrieval), `nse.py` (identity, EOD, announcements, annual-report index), `documents.py` (identification, availability proof, page extraction).
-- `backend/finn/replay.py` — manifest + publication-cutoff filter. `retrieval.py` — FTS5 per section. `research.py` — packet, model call, validation, gaps. `llm.py` — Responses adapter + cost ledger. `service.py` — jobs and read models. `api.py` — HTTP routes. `verify.py` — real-data checks.
-- `backend/finn/brief.py` — keyless extractive source brief (verbatim quote selection, no model). `snapshot.py` — static read-model export. `backend/finn/llm.py` — Gemini / Anthropic / OpenAI adapters + cost ledger.
-- `manifests/replay_2025_04.json` — replay source **metadata only** (URLs, doc types, periods, where to search for publication evidence). No answers, values or verdicts.
-- `Dockerfile`, `render.yaml` — single-service deployment design (keyless/Gemini default). `scripts/make_qr.py` — QR + share card. See `docs/DEPLOY_FREE.md`.
-
-## Evidence rules in code
-
-- Publication time comes from a dated exchange record whose attachment is that exact file; call dates, filenames and cover dates are never treated as proof. Date-only proof is treated as available at 23:59:59 IST that day. Unproven documents are excluded from replay.
-- Identity checks are generic (legal name, document-type terms, fiscal-period spellings on the first pages).
-- Generated statements are dropped unless cited ids belong to the evidence packet, the expected document type is cited, financial numeric tokens appear in cited text, and supplied speaker attribution matches the cited passages. An exact reporting-period label can come from document metadata; its digits cannot support an unrelated financial value.
-- Citation membership and whole-number-token checks do not establish semantic entailment or financial comparability. Generated research still requires source-level manual evaluation before any accuracy claim.
-- Source text is delimited and escaped as data; the prompt forbids following embedded instructions.
+Docker and Render configuration remain at the repository root. Private credentials, subscriber data, local corpus files and submission exports are excluded from Git.

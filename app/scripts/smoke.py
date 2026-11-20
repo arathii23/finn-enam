@@ -1,6 +1,6 @@
 """Application startup + HTTP smoke + restart persistence check against a real server.
 
-Usage (from repo root, venv active): python scripts/smoke.py [--port 8765]
+Usage (from repo root, venv active): python app/scripts/smoke.py [--port 8765]
 Starts `python -m finn serve`, exercises the HTTP routes with the ingested corpus,
 restarts the server and confirms the job record persisted. Writes
 data/verification/startup_smoke.json. Requires ingestion to have run first."""
@@ -17,13 +17,13 @@ from pathlib import Path
 
 import httpx
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(os.environ.get("FINN_DATA_DIR", ROOT / "data")) / "verification"
 
 
 def start(port: int) -> subprocess.Popen:
     env = {**os.environ, "PYTHONUNBUFFERED": "1"}
-    proc = subprocess.Popen([sys.executable, "-m", "finn", "serve", "--port", str(port)], cwd=ROOT / "backend", env=env,
+    proc = subprocess.Popen([sys.executable, "-m", "finn", "serve", "--port", str(port)], cwd=ROOT / "app" / "backend", env=env,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     t0 = time.time()
     while time.time() - t0 < 30:

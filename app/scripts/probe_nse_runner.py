@@ -9,8 +9,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "backend"))
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "app" / "backend"))
 
 from finn.config import get_settings  # noqa: E402
 from finn.db import Store  # noqa: E402

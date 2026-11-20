@@ -11,7 +11,7 @@ from typing import Optional
 from dotenv import load_dotenv
 
 IST = timezone(timedelta(hours=5, minutes=30), name="IST")
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 PARSER_VERSION = "pypdf-pages-v4-discovery-rosters"
 PROMPT_VERSION = "research-m1-v1.8"
 SCHEMA_VERSION = "research-output-v1"
@@ -96,12 +96,12 @@ def get_settings() -> Settings:
     return Settings(
         data_dir=data_dir,
         manifest_path=Path(
-            os.environ.get("FINN_REPLAY_MANIFEST", REPO_ROOT / "manifests" / "replay_2025_04.json")
+            os.environ.get("FINN_REPLAY_MANIFEST", REPO_ROOT / "app" / "manifests" / "replay_2025_04.json")
         ).resolve(),
         portfolio_path=Path(
-            os.environ.get("FINN_PORTFOLIO_MANIFEST", REPO_ROOT / "manifests" / "portfolio.json")
+            os.environ.get("FINN_PORTFOLIO_MANIFEST", REPO_ROOT / "app" / "manifests" / "portfolio.json")
         ).resolve(),
-        frontend_dist=Path(os.environ.get("FINN_FRONTEND_DIST", REPO_ROOT / "frontend" / "dist")).resolve(),
+        frontend_dist=Path(os.environ.get("FINN_FRONTEND_DIST", REPO_ROOT / "app" / "frontend" / "dist")).resolve(),
         phone_redis_url=os.environ.get("UPSTASH_REDIS_REST_URL") or None,
         phone_redis_token=os.environ.get("UPSTASH_REDIS_REST_TOKEN") or None,
         phone_job_token=os.environ.get("FINN_PHONE_ALERTS_JOB_TOKEN") or None,

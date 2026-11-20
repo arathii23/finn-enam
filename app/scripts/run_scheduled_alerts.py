@@ -17,8 +17,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "backend"))
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "app" / "backend"))
 
 from finn import alerts  # noqa: E402
 

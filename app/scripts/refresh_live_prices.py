@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{ticker}.NS?range=3mo&interval=1d"
 HEADERS = {"User-Agent": "Mozilla/5.0 (FINN primary-source research prototype)"}
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _number(value: Any, *, positive: bool = False) -> Optional[float]:
@@ -139,7 +139,7 @@ def _fetch(symbol: str) -> Dict[str, Any]:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="live_prices.json")
-    ap.add_argument("--portfolio", default=str(REPO_ROOT / "manifests" / "portfolio.json"))
+    ap.add_argument("--portfolio", default=str(REPO_ROOT / "app" / "manifests" / "portfolio.json"))
     args = ap.parse_args(argv)
     pf = json.loads(Path(args.portfolio).read_text())
     d = pf.get("anomaly_defaults", {})
