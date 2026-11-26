@@ -1,15 +1,29 @@
-name: Verify portfolio digest access
+name: Publish portfolio digest
+
+# Keeps digest.json on the `live-data` branch fresh, so the static GitHub Pages app shows the
+# current "Since your last visit" review instead of falling back to the historical replay
+# (the static client rejects a digest older than 14 days). Keyless: no model calls.
+# A runner reads NSE directly (probe passed 26 Nov 2026, HTTP 200). The verified corpus is the
+# same public release seed the Render image uses (SEED_URL in the Dockerfile).
+# The cron is best-effort: GitHub throttles scheduled runs on quiet repositories.
+# If no holding can be checked, the run fails and the last published digest stays in place.
+
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: "23 */3 * * *"
+  workflow_dispatch: {}
+
 permissions:
-  contents: read
+  contents: write
+
 concurrency:
   group: live-data-publish
   cancel-in-progress: false
+
 jobs:
-  probe:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     env:
       FINN_MODEL_PROVIDER: keyless
       PYTHONPATH: app/backend
@@ -19,5 +33,52 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -r app/backend/requirements.txt
-      - name: Probe NSE from this runner
-        run: python app/scripts/probe_nse_runner.py
+      - name: Read the seed address from the Dockerfile
+        id: seed
+        run: |
+          set -euo pipefail
+          url=$(sed -n 's/^ARG SEED_URL=//p' Dockerfile)
+          test -n "$url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/finn-seed.tar.gz
+          key: finn-seed-${{ hashFiles('Dockerfile') }}
+      - name: Unpack the verified corpus
+        env:
+          SEED_URL: ${{ steps.seed.outputs.url }}
+        run: |
+          set -euo pipefail
+          seed="$RUNNER_TEMP/finn-seed.tar.gz"
+          [ -s "$seed" ] || curl -fsSL "$SEED_URL" -o "$seed"
+          mkdir -p "$RUNNER_TEMP/finn-data"
+          tar -xzf "$seed" -C "$RUNNER_TEMP/finn-data"
+          test -f "$RUNNER_TEMP/finn-data/finn.sqlite3"
+      - name: Check out the published data
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin live-data:refs/remotes/origin/live-data
+          git worktree add --quiet --detach _pub origin/live-data
+      - name: Build the digest from current NSE filings
+        env:
+          FINN_DATA_DIR: ${{ runner.temp }}/finn-data
+        run: |
+          set -euo pipefail
+          previous=()
+          if [ -f _pub/digest.json ]; then previous=(--previous _pub/digest.json); fi
+          python -m finn digest --days 7 --out "$RUNNER_TEMP/digest.json" "${previous[@]}"
+      - name: Validate before publishing
+        env:
+          FINN_PYTHON: python
+        run: bash app/scripts/publish_digest.sh "$RUNNER_TEMP/digest.json" --validate
+      - name: Publish to live-data branch
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/digest.json" _pub/digest.json
+          cd _pub
+          git config user.name "finn-live-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -- digest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -q -m "Update portfolio digest"
+          git push -q origin HEAD:refs/heads/live-data
