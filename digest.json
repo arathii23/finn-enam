@@ -1,114 +1,114 @@
 {
   "schema": 1,
-  "generated_at": "2026-11-26T23:43:49.182884+00:00",
+  "generated_at": "2026-11-27T08:46:37.001881+00:00",
   "checks": {
-    "finished_at": "2026-11-26T23:43:49+00:00",
+    "finished_at": "2026-11-27T08:46:36+00:00",
     "holdings_total": 15,
-    "holdings_checked": 14,
-    "last_full_check_at": null,
+    "holdings_checked": 15,
+    "last_full_check_at": "2026-11-27T08:46:36+00:00",
     "holdings": [
       {
         "symbol": "ASTRAL",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:47+00:00",
+        "checked_at": "2026-11-27T08:46:34+00:00",
         "error": null,
         "announcements": 0
       },
       {
         "symbol": "BHARTIARTL",
-        "state": "timeout",
-        "checked_at": null,
-        "error": "NSE could not be checked: timeout.",
-        "announcements": 0
+        "state": "fetched",
+        "checked_at": "2026-11-27T08:46:16+00:00",
+        "error": null,
+        "announcements": 1
       },
       {
         "symbol": "CERA",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:49+00:00",
+        "checked_at": "2026-11-27T08:46:36+00:00",
         "error": null,
         "announcements": 0
       },
       {
         "symbol": "HCLTECH",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:11+00:00",
+        "checked_at": "2026-11-27T08:46:08+00:00",
         "error": null,
         "announcements": 0
       },
       {
         "symbol": "HDFCBANK",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:16+00:00",
+        "checked_at": "2026-11-27T08:46:12+00:00",
         "error": null,
         "announcements": 1
       },
       {
         "symbol": "HINDUNILVR",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:36+00:00",
+        "checked_at": "2026-11-27T08:46:24+00:00",
         "error": null,
         "announcements": 1
       },
       {
         "symbol": "ICICIBANK",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:19+00:00",
+        "checked_at": "2026-11-27T08:46:14+00:00",
         "error": null,
-        "announcements": 1
+        "announcements": 3
       },
       {
         "symbol": "INFY",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:09+00:00",
+        "checked_at": "2026-11-27T08:46:04+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "LT",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:30+00:00",
+        "checked_at": "2026-11-27T08:46:18+00:00",
         "error": null,
         "announcements": 3
       },
       {
         "symbol": "MARUTI",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:32+00:00",
+        "checked_at": "2026-11-27T08:46:20+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "RELIANCE",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:13+00:00",
+        "checked_at": "2026-11-27T08:46:10+00:00",
         "error": null,
         "announcements": 0
       },
       {
         "symbol": "SUNPHARMA",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:38+00:00",
+        "checked_at": "2026-11-27T08:46:26+00:00",
         "error": null,
         "announcements": 3
       },
       {
         "symbol": "TITAN",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:42+00:00",
+        "checked_at": "2026-11-27T08:46:30+00:00",
         "error": null,
         "announcements": 3
       },
       {
         "symbol": "TRENT",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:45+00:00",
+        "checked_at": "2026-11-27T08:46:32+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "ULTRACEMCO",
         "state": "fetched",
-        "checked_at": "2026-11-26T23:43:40+00:00",
+        "checked_at": "2026-11-27T08:46:28+00:00",
         "error": null,
         "announcements": 0
       }
@@ -120,6 +120,46 @@
     "days": 7
   },
   "items": [
+    {
+      "id": "ann_3fc65a6e6a755818",
+      "version": "1474e8e08274a5fa",
+      "symbol": "ICICIBANK",
+      "published_at": "2026-11-27T07:13:03+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "ICICI Bank Limited has informed the Exchange regarding 'Disclosure under Regulation 30 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015'.",
+      "headline": "ICICI Bank Limited has informed the Exchange regarding 'Disclosure under Regulation 30 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015'.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/ICICI2022_27112026124048_BSENSE27112026.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
+    {
+      "id": "ann_a9d70e63e6e84993",
+      "version": "2ccd6a9bc8322122",
+      "symbol": "ICICIBANK",
+      "published_at": "2026-11-27T05:10:16+00:00",
+      "category": "unclassified",
+      "base_tier": 3,
+      "tier": 3,
+      "tier_reason": "Routine / compliance",
+      "subject": "ICICI Bank Limited has informed the Exchange regarding Allotment of 907815  Shares.",
+      "headline": "ICICI Bank Limited has informed the Exchange regarding Allotment of 907815  Shares.",
+      "source": {
+        "url": "https://nsearchives.nseindia.in/corporate/ICICIBANK1_27112026103857_Lettertoexchange.pdf"
+      },
+      "facts": [],
+      "extraction": {
+        "state": "skipped",
+        "reason": "Exchange subject only"
+      }
+    },
     {
       "id": "ann_1df0d4e503c92991",
       "version": "d692c4988634fe62",
@@ -833,26 +873,6 @@
       "headline": "UltraTech Cement Limited has informed the Exchange about Schedule of meet",
       "source": {
         "url": "https://nsearchives.nseindia.in/corporate/ULTRACEMCO1_13112026151818_Investor_meet_intimation18112026.pdf"
-      },
-      "facts": [],
-      "extraction": {
-        "state": "skipped",
-        "reason": "Exchange subject only"
-      }
-    },
-    {
-      "id": "ann_1cf550c843c32076",
-      "version": "2a81e2069439d289",
-      "symbol": "TRENT",
-      "published_at": "2026-11-13T05:54:23+00:00",
-      "category": "unclassified",
-      "base_tier": 3,
-      "tier": 3,
-      "tier_reason": "Routine / compliance",
-      "subject": "Trent Limited has informed the Exchange about Reminder letter to  shareholders to Dematerialise the Shares",
-      "headline": "Trent Limited has informed the Exchange about Reminder letter to  shareholders to Dematerialise the Shares",
-      "source": {
-        "url": "https://nsearchives.nseindia.in/corporate/TRENT_13112026112141_Reg_30_-_Dematerialisation_letter_to_shareholders.pdf"
       },
       "facts": [],
       "extraction": {
