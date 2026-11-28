@@ -1,114 +1,114 @@
 {
   "schema": 1,
-  "generated_at": "2026-11-27T19:04:22.400362+00:00",
+  "generated_at": "2026-11-28T03:22:18.006652+00:00",
   "checks": {
-    "finished_at": "2026-11-27T19:04:22+00:00",
+    "finished_at": "2026-11-28T03:22:15+00:00",
     "holdings_total": 15,
     "holdings_checked": 15,
-    "last_full_check_at": "2026-11-27T19:04:22+00:00",
+    "last_full_check_at": "2026-11-28T03:22:15+00:00",
     "holdings": [
       {
         "symbol": "ASTRAL",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:20+00:00",
+        "checked_at": "2026-11-28T03:22:13+00:00",
         "error": null,
         "announcements": 0
       },
       {
         "symbol": "BHARTIARTL",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:04+00:00",
+        "checked_at": "2026-11-28T03:21:57+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "CERA",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:22+00:00",
+        "checked_at": "2026-11-28T03:22:15+00:00",
         "error": null,
         "announcements": 0
       },
       {
         "symbol": "HCLTECH",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:03:55+00:00",
+        "checked_at": "2026-11-28T03:21:49+00:00",
         "error": null,
         "announcements": 0
       },
       {
         "symbol": "HDFCBANK",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:00+00:00",
+        "checked_at": "2026-11-28T03:21:53+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "HINDUNILVR",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:10+00:00",
+        "checked_at": "2026-11-28T03:22:03+00:00",
         "error": null,
         "announcements": 1
       },
       {
         "symbol": "ICICIBANK",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:02+00:00",
+        "checked_at": "2026-11-28T03:21:55+00:00",
         "error": null,
         "announcements": 4
       },
       {
         "symbol": "INFY",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:03:53+00:00",
+        "checked_at": "2026-11-28T03:21:47+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "LT",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:06+00:00",
+        "checked_at": "2026-11-28T03:21:59+00:00",
         "error": null,
         "announcements": 3
       },
       {
         "symbol": "MARUTI",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:08+00:00",
+        "checked_at": "2026-11-28T03:22:01+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "RELIANCE",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:03:57+00:00",
+        "checked_at": "2026-11-28T03:21:51+00:00",
         "error": null,
         "announcements": 0
       },
       {
         "symbol": "SUNPHARMA",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:12+00:00",
+        "checked_at": "2026-11-28T03:22:05+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "TITAN",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:16+00:00",
+        "checked_at": "2026-11-28T03:22:09+00:00",
         "error": null,
         "announcements": 4
       },
       {
         "symbol": "TRENT",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:18+00:00",
+        "checked_at": "2026-11-28T03:22:11+00:00",
         "error": null,
         "announcements": 2
       },
       {
         "symbol": "ULTRACEMCO",
         "state": "fetched",
-        "checked_at": "2026-11-27T19:04:14+00:00",
+        "checked_at": "2026-11-28T03:22:07+00:00",
         "error": null,
         "announcements": 0
       }
